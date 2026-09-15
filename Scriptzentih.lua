@@ -88,12 +88,20 @@ end)()
 local PLACE_ID = 107778070777162
 local genv = (getgenv and getgenv()) or _G
 
+if genv.SV_SAE_WINDOW and genv.SV_SAE_WINDOW.Gui and genv.SV_SAE_WINDOW.Gui.Parent then
+	pcall(function()
+		local main = genv.SV_SAE_WINDOW.Gui:FindFirstChild("MainFrame", true)
+		if main then
+			main.Visible = true
+		end
+	end)
+	print("[ScriptVerse] Menu toggled visible")
+	return
+end
+
 if type(genv.SV_SAE_SHUTDOWN) == "function" then
 	pcall(genv.SV_SAE_SHUTDOWN)
-	task.wait(0.1)
-end
-if genv.SV_SAE_RUNNING then
-	return
+	task.wait(0.05)
 end
 genv.SV_SAE_RUNNING = true
 print("[ScriptVerse] Steal An Egg - loading...")
@@ -174,12 +182,12 @@ local function createFallbackSVUI()
 		local title = opts.Title or "Notification"
 		local content = opts.Content or ""
 		local dur = opts.Duration or 2.5
-		local col = opts.Color or Color3.fromRGB(120, 220, 160)
+		local col = opts.Color or Color3.fromRGB(255, 255, 255)
 
-		local sg = parentGui:FindFirstChild("SVUI_NotifyGui")
+		local sg = parentGui:FindFirstChild("Zenith_NotifyGui")
 		if not sg then
 			sg = Instance.new("ScreenGui")
-			sg.Name = "SVUI_NotifyGui"
+			sg.Name = "Zenith_NotifyGui"
 			sg.ResetOnSpawn = false
 			sg.DisplayOrder = 100
 			sg.Parent = parentGui
@@ -203,7 +211,7 @@ local function createFallbackSVUI()
 
 		local card = Instance.new("Frame")
 		card.Size = UDim2.new(1, 0, 0, 54)
-		card.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
+		card.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 		card.BorderSizePixel = 0
 		card.Parent = holder
 
@@ -214,7 +222,7 @@ local function createFallbackSVUI()
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = col
 		stroke.Thickness = 1.2
-		stroke.Transparency = 0.3
+		stroke.Transparency = 0.2
 		stroke.Parent = card
 
 		local titleLbl = Instance.new("TextLabel")
@@ -234,7 +242,7 @@ local function createFallbackSVUI()
 		contentLbl.BackgroundTransparency = 1
 		contentLbl.Font = Enum.Font.SourceSans
 		contentLbl.TextSize = 13
-		contentLbl.TextColor3 = Color3.fromRGB(200, 200, 210)
+		contentLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
 		contentLbl.TextXAlignment = Enum.TextXAlignment.Left
 		contentLbl.Text = content
 		contentLbl.Parent = card
@@ -255,69 +263,72 @@ local function createFallbackSVUI()
 
 	function FallbackUI:CreateWindow(opts)
 		opts = opts or {}
-		local winTitle = opts.Title or "ScriptVerse"
+		local winTitle = opts.Title or "Zenith EGG"
 		local winSub = opts.Subtitle or ""
 
 		local sg = Instance.new("ScreenGui")
-		sg.Name = "ScriptVerse_UI"
+		sg.Name = "Zenith_EGG_UI"
 		sg.ResetOnSpawn = false
 		sg.DisplayOrder = 20
 		sg.Parent = parentGui
 
 		local main = Instance.new("Frame")
 		main.Name = "MainFrame"
-		main.Size = UDim2.new(0, 480, 0, 320)
-		main.Position = UDim2.new(0.5, -240, 0.5, -160)
-		main.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+		main.Size = UDim2.new(0, 560, 0, 380)
+		main.Position = UDim2.new(0.5, -280, 0.5, -190)
+		main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 		main.BorderSizePixel = 0
 		main.Active = true
 		main.ClipsDescendants = true
 		main.Parent = sg
 
 		local mainCorner = Instance.new("UICorner")
-		mainCorner.CornerRadius = UDim.new(0, 10)
+		mainCorner.CornerRadius = UDim.new(0, 8)
 		mainCorner.Parent = main
 
 		local mainStroke = Instance.new("UIStroke")
-		mainStroke.Color = Color3.fromRGB(50, 180, 130)
+		mainStroke.Color = Color3.fromRGB(240, 240, 240)
 		mainStroke.Thickness = 1.5
 		mainStroke.Parent = main
 
 		local dragging, dragInput, dragStart, startPos
 		local topBar = Instance.new("Frame")
 		topBar.Name = "TopBar"
-		topBar.Size = UDim2.new(1, 0, 0, 40)
-		topBar.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
+		topBar.Size = UDim2.new(1, 0, 0, 42)
+		topBar.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
 		topBar.BorderSizePixel = 0
 		topBar.Parent = main
 
-		local topCorner = Instance.new("UICorner")
-		topCorner.CornerRadius = UDim.new(0, 10)
-		topCorner.Parent = topBar
+		local logoImg = Instance.new("ImageLabel")
+		logoImg.Size = UDim2.new(0, 26, 0, 26)
+		logoImg.Position = UDim2.new(0, 10, 0, 8)
+		logoImg.BackgroundTransparency = 1
+		logoImg.Image = "rbxassetid://10723363302"
+		logoImg.Parent = topBar
 
 		local titleText = Instance.new("TextLabel")
-		titleText.Size = UDim2.new(1, -60, 1, 0)
-		titleText.Position = UDim2.new(0, 14, 0, 0)
+		titleText.Size = UDim2.new(1, -100, 1, 0)
+		titleText.Position = UDim2.new(0, 42, 0, 0)
 		titleText.BackgroundTransparency = 1
 		titleText.Font = Enum.Font.SourceSansBold
-		titleText.TextSize = 16
-		titleText.TextColor3 = Color3.fromRGB(120, 220, 160)
+		titleText.TextSize = 17
+		titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 		titleText.TextXAlignment = Enum.TextXAlignment.Left
-		titleText.Text = winTitle .. (winSub ~= "" and (" - " .. winSub) or "")
+		titleText.Text = winTitle .. (winSub ~= "" and (" | " .. winSub) or "")
 		titleText.Parent = topBar
 
 		local closeBtn = Instance.new("TextButton")
-		closeBtn.Size = UDim2.new(0, 28, 0, 28)
-		closeBtn.Position = UDim2.new(1, -34, 0, 6)
-		closeBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+		closeBtn.Size = UDim2.new(0, 26, 0, 26)
+		closeBtn.Position = UDim2.new(1, -34, 0, 8)
+		closeBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		closeBtn.Font = Enum.Font.SourceSansBold
 		closeBtn.TextSize = 14
-		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 		closeBtn.Text = "X"
 		closeBtn.Parent = topBar
 
 		local closeCorner = Instance.new("UICorner")
-		closeCorner.CornerRadius = UDim.new(0, 6)
+		closeCorner.CornerRadius = UDim.new(0, 4)
 		closeCorner.Parent = closeBtn
 
 		closeBtn.MouseButton1Click:Connect(function()
@@ -349,9 +360,9 @@ local function createFallbackSVUI()
 		end)
 
 		local tabHolder = Instance.new("Frame")
-		tabHolder.Size = UDim2.new(0, 120, 1, -40)
-		tabHolder.Position = UDim2.new(0, 0, 0, 40)
-		tabHolder.BackgroundColor3 = Color3.fromRGB(22, 24, 30)
+		tabHolder.Size = UDim2.new(0, 135, 1, -42)
+		tabHolder.Position = UDim2.new(0, 0, 0, 42)
+		tabHolder.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 		tabHolder.BorderSizePixel = 0
 		tabHolder.Parent = main
 
@@ -367,12 +378,13 @@ local function createFallbackSVUI()
 		tabPadding.Parent = tabHolder
 
 		local contentArea = Instance.new("Frame")
-		contentArea.Size = UDim2.new(1, -125, 1, -45)
-		contentArea.Position = UDim2.new(0, 123, 0, 43)
+		contentArea.Size = UDim2.new(1, -140, 1, -47)
+		contentArea.Position = UDim2.new(0, 138, 0, 45)
 		contentArea.BackgroundTransparency = 1
 		contentArea.Parent = main
 
 		local windowObj = { Gui = sg }
+		genv.SV_SAE_WINDOW = windowObj
 		local tabs = {}
 		local firstTab = true
 
@@ -384,16 +396,16 @@ local function createFallbackSVUI()
 			firstTab = false
 
 			local tabBtn = Instance.new("TextButton")
-			tabBtn.Size = UDim2.new(1, 0, 0, 32)
-			tabBtn.BackgroundColor3 = isFirst and Color3.fromRGB(35, 42, 52) or Color3.fromRGB(28, 30, 38)
+			tabBtn.Size = UDim2.new(1, 0, 0, 34)
+			tabBtn.BackgroundColor3 = isFirst and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(20, 20, 20)
 			tabBtn.Font = Enum.Font.SourceSansBold
 			tabBtn.TextSize = 14
-			tabBtn.TextColor3 = isFirst and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(170, 170, 180)
+			tabBtn.TextColor3 = isFirst and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(180, 180, 180)
 			tabBtn.Text = tabName
 			tabBtn.Parent = tabHolder
 
 			local tabCorner = Instance.new("UICorner")
-			tabCorner.CornerRadius = UDim.new(0, 6)
+			tabCorner.CornerRadius = UDim.new(0, 4)
 			tabCorner.Parent = tabBtn
 
 			local tabFrame = Instance.new("ScrollingFrame")
@@ -401,7 +413,7 @@ local function createFallbackSVUI()
 			tabFrame.BackgroundTransparency = 1
 			tabFrame.BorderSizePixel = 0
 			tabFrame.ScrollBarThickness = 4
-			tabFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 90, 110)
+			tabFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
 			tabFrame.Visible = isFirst
 			tabFrame.Parent = contentArea
 
@@ -417,12 +429,12 @@ local function createFallbackSVUI()
 			tabBtn.MouseButton1Click:Connect(function()
 				for _, t in ipairs(tabs) do
 					t.Frame.Visible = false
-					t.Button.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
-					t.Button.TextColor3 = Color3.fromRGB(170, 170, 180)
+					t.Button.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+					t.Button.TextColor3 = Color3.fromRGB(180, 180, 180)
 				end
 				tabFrame.Visible = true
-				tabBtn.BackgroundColor3 = Color3.fromRGB(35, 42, 52)
-				tabBtn.TextColor3 = Color3.fromRGB(120, 220, 160)
+				tabBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				tabBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 			end)
 
 			local tabObj = {}
@@ -434,9 +446,9 @@ local function createFallbackSVUI()
 				secLbl.BackgroundTransparency = 1
 				secLbl.Font = Enum.Font.SourceSansBold
 				secLbl.TextSize = 14
-				secLbl.TextColor3 = Color3.fromRGB(120, 220, 160)
+				secLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
 				secLbl.TextXAlignment = Enum.TextXAlignment.Left
-				secLbl.Text = "--- " .. tostring(secName) .. " ---"
+				secLbl.Text = "[ " .. tostring(secName) .. " ]"
 				secLbl.Parent = tabFrame
 			end
 
@@ -447,13 +459,13 @@ local function createFallbackSVUI()
 				local cb = tOpts.Callback or function() end
 
 				local frame = Instance.new("Frame")
-				frame.Size = UDim2.new(1, -10, 0, 34)
-				frame.BackgroundColor3 = Color3.fromRGB(26, 29, 38)
+				frame.Size = UDim2.new(1, -10, 0, 36)
+				frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 				frame.BorderSizePixel = 0
 				frame.Parent = tabFrame
 
 				local fc = Instance.new("UICorner")
-				fc.CornerRadius = UDim.new(0, 6)
+				fc.CornerRadius = UDim.new(0, 4)
 				fc.Parent = frame
 
 				local lbl = Instance.new("TextLabel")
@@ -462,28 +474,29 @@ local function createFallbackSVUI()
 				lbl.BackgroundTransparency = 1
 				lbl.Font = Enum.Font.SourceSans
 				lbl.TextSize = 14
-				lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+				lbl.TextColor3 = Color3.fromRGB(240, 240, 240)
 				lbl.TextXAlignment = Enum.TextXAlignment.Left
 				lbl.Text = title
 				lbl.Parent = frame
 
 				local btn = Instance.new("TextButton")
-				btn.Size = UDim2.new(0, 42, 0, 22)
-				btn.Position = UDim2.new(1, -50, 0.5, -11)
-				btn.BackgroundColor3 = state and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(60, 65, 75)
+				btn.Size = UDim2.new(0, 44, 0, 22)
+				btn.Position = UDim2.new(1, -52, 0.5, -11)
+				btn.BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(50, 50, 50)
 				btn.Font = Enum.Font.SourceSansBold
 				btn.TextSize = 12
-				btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				btn.TextColor3 = state and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(200, 200, 200)
 				btn.Text = state and "ON" or "OFF"
 				btn.Parent = frame
 
 				local bc = Instance.new("UICorner")
-				bc.CornerRadius = UDim.new(0, 11)
+				bc.CornerRadius = UDim.new(0, 4)
 				bc.Parent = btn
 
 				btn.MouseButton1Click:Connect(function()
 					state = not state
-					btn.BackgroundColor3 = state and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(60, 65, 75)
+					btn.BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(50, 50, 50)
+					btn.TextColor3 = state and Color3.fromRGB(0, 0, 0) or Color3.fromRGB(200, 200, 200)
 					btn.Text = state and "ON" or "OFF"
 					pcall(cb, state)
 				end)
@@ -499,13 +512,13 @@ local function createFallbackSVUI()
 				local cb = sOpts.Callback or function() end
 
 				local frame = Instance.new("Frame")
-				frame.Size = UDim2.new(1, -10, 0, 46)
-				frame.BackgroundColor3 = Color3.fromRGB(26, 29, 38)
+				frame.Size = UDim2.new(1, -10, 0, 48)
+				frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 				frame.BorderSizePixel = 0
 				frame.Parent = tabFrame
 
 				local fc = Instance.new("UICorner")
-				fc.CornerRadius = UDim.new(0, 6)
+				fc.CornerRadius = UDim.new(0, 4)
 				fc.Parent = frame
 
 				local lbl = Instance.new("TextLabel")
@@ -514,7 +527,7 @@ local function createFallbackSVUI()
 				lbl.BackgroundTransparency = 1
 				lbl.Font = Enum.Font.SourceSans
 				lbl.TextSize = 14
-				lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+				lbl.TextColor3 = Color3.fromRGB(240, 240, 240)
 				lbl.TextXAlignment = Enum.TextXAlignment.Left
 				lbl.Text = title
 				lbl.Parent = frame
@@ -525,15 +538,15 @@ local function createFallbackSVUI()
 				valLbl.BackgroundTransparency = 1
 				valLbl.Font = Enum.Font.SourceSansBold
 				valLbl.TextSize = 14
-				valLbl.TextColor3 = Color3.fromRGB(120, 220, 160)
+				valLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
 				valLbl.TextXAlignment = Enum.TextXAlignment.Right
 				valLbl.Text = tostring(curVal)
 				valLbl.Parent = frame
 
 				local barBg = Instance.new("Frame")
 				barBg.Size = UDim2.new(1, -20, 0, 8)
-				barBg.Position = UDim2.new(0, 10, 0, 28)
-				barBg.BackgroundColor3 = Color3.fromRGB(45, 50, 62)
+				barBg.Position = UDim2.new(0, 10, 0, 30)
+				barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 				barBg.BorderSizePixel = 0
 				barBg.Parent = frame
 
@@ -544,7 +557,7 @@ local function createFallbackSVUI()
 				local fill = Instance.new("Frame")
 				local pct = math.clamp((curVal - minVal) / (maxVal - minVal), 0, 1)
 				fill.Size = UDim2.new(pct, 0, 1, 0)
-				fill.BackgroundColor3 = Color3.fromRGB(120, 220, 160)
+				fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				fill.BorderSizePixel = 0
 				fill.Parent = barBg
 
@@ -582,22 +595,80 @@ local function createFallbackSVUI()
 				end)
 			end
 
+			function tabObj:CreateKeybind(kOpts)
+				kOpts = kOpts or {}
+				local title = kOpts.Title or "Keybind"
+				local currentKey = kOpts.Default or Enum.KeyCode.Unknown
+				local cb = kOpts.Callback or function() end
+
+				local frame = Instance.new("Frame")
+				frame.Size = UDim2.new(1, -10, 0, 36)
+				frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+				frame.BorderSizePixel = 0
+				frame.Parent = tabFrame
+
+				local fc = Instance.new("UICorner")
+				fc.CornerRadius = UDim.new(0, 4)
+				fc.Parent = frame
+
+				local lbl = Instance.new("TextLabel")
+				lbl.Size = UDim2.new(1, -90, 1, 0)
+				lbl.Position = UDim2.new(0, 10, 0, 0)
+				lbl.BackgroundTransparency = 1
+				lbl.Font = Enum.Font.SourceSans
+				lbl.TextSize = 14
+				lbl.TextColor3 = Color3.fromRGB(240, 240, 240)
+				lbl.TextXAlignment = Enum.TextXAlignment.Left
+				lbl.Text = title
+				lbl.Parent = frame
+
+				local btn = Instance.new("TextButton")
+				btn.Size = UDim2.new(0, 75, 0, 22)
+				btn.Position = UDim2.new(1, -82, 0.5, -11)
+				btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+				btn.Font = Enum.Font.SourceSansBold
+				btn.TextSize = 12
+				btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				btn.Text = (currentKey == Enum.KeyCode.Unknown and "None" or currentKey.Name)
+				btn.Parent = frame
+
+				local bc = Instance.new("UICorner")
+				bc.CornerRadius = UDim.new(0, 4)
+				bc.Parent = btn
+
+				local binding = false
+				btn.MouseButton1Click:Connect(function()
+					binding = true
+					btn.Text = "..."
+				end)
+
+				UserInputService.InputBegan:Connect(function(input, gpe)
+					if binding and input.UserInputType == Enum.UserInputType.Keyboard then
+						binding = false
+						currentKey = input.KeyCode
+						btn.Text = (currentKey == Enum.KeyCode.Unknown and "None" or currentKey.Name)
+					elseif not gpe and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == currentKey and currentKey ~= Enum.KeyCode.Unknown then
+						pcall(cb)
+					end
+				end)
+			end
+
 			function tabObj:CreateButton(bOpts)
 				bOpts = bOpts or {}
 				local title = bOpts.Title or "Button"
 				local cb = bOpts.Callback or function() end
 
 				local btn = Instance.new("TextButton")
-				btn.Size = UDim2.new(1, -10, 0, 32)
-				btn.BackgroundColor3 = Color3.fromRGB(40, 45, 58)
+				btn.Size = UDim2.new(1, -10, 0, 34)
+				btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 				btn.Font = Enum.Font.SourceSansBold
 				btn.TextSize = 14
-				btn.TextColor3 = Color3.fromRGB(240, 240, 250)
+				btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 				btn.Text = title
 				btn.Parent = tabFrame
 
 				local bc = Instance.new("UICorner")
-				bc.CornerRadius = UDim.new(0, 6)
+				bc.CornerRadius = UDim.new(0, 4)
 				bc.Parent = btn
 
 				btn.MouseButton1Click:Connect(function()
@@ -608,30 +679,14 @@ local function createFallbackSVUI()
 			return tabObj
 		end
 
-		return windowObj
-	end
-
 	return FallbackUI
 end
 
-local SVUI = genv.SVUI or _G.SVUI
-if not SVUI then
-	pinUiToPlayerGui()
-	local ok, lib = pcall(function()
-		return loadstring(game:HttpGet("https://scriptversekey.xyz/svui.lua"))()
-	end)
-	if ok and type(lib) == "table" then
-		SVUI = lib
-	end
-end
-if not SVUI then
-	warn("[ScriptVerse] SVUI external library failed to load - using built-in UI fallback")
-	SVUI = createFallbackSVUI()
-end
+local SVUI = createFallbackSVUI()
 
-local Accent = Color3.fromRGB(120, 220, 160)
-local OkGreen = Color3.fromRGB(120, 220, 140)
-local WarnOrange = Color3.fromRGB(255, 140, 80)
+local Accent = Color3.fromRGB(255, 255, 255)
+local OkGreen = Color3.fromRGB(240, 240, 240)
+local WarnOrange = Color3.fromRGB(150, 150, 150)
 
 local function softRequire(inst)
 	if typeof(inst) ~= "Instance" then
@@ -641,27 +696,25 @@ local function softRequire(inst)
 	return ok and mod or nil
 end
 
-local Lib = ReplicatedStorage:WaitForChild("Library", 30)
-local Client = Lib:WaitForChild("Client", 15)
-local Util = Lib:WaitForChild("Util", 15)
-local Globals = Lib:WaitForChild("Globals", 15)
+local Lib = ReplicatedStorage:FindFirstChild("Library") or ReplicatedStorage:WaitForChild("Library", 3)
+local Client = Lib and (Lib:FindFirstChild("Client") or Lib:WaitForChild("Client", 2))
+local Util = Lib and (Lib:FindFirstChild("Util") or Lib:WaitForChild("Util", 2))
+local Globals = Lib and (Lib:FindFirstChild("Globals") or Lib:WaitForChild("Globals", 2))
 
-local EggCmds = softRequire(Client:WaitForChild("EggCmds", 15))
-local PlotCmds = softRequire(Client:WaitForChild("PlotCmds", 15))
-local Network = softRequire(Client:WaitForChild("Network", 15))
-local Guard = softRequire(Client:WaitForChild("ToolGameplayGuard", 15))
-local Lookup = softRequire(Util:WaitForChild("GuardAreaLookupUtil", 15))
-local Save = softRequire(Client:WaitForChild("Save", 15))
-local BaseUpgrade = softRequire(Client:WaitForChild("BaseUpgradeClient", 15))
-local AssetCmds = softRequire(Client:WaitForChild("AssetCmds", 15))
-local Constants = softRequire(Globals:WaitForChild("Constants", 15))
-local SpeedPowerProjection = softRequire(Client:FindFirstChild("SpeedPowerProjection"))
-local TreadmillUtil = softRequire(Util:FindFirstChild("TreadmillUtil"))
+local EggCmds = Client and softRequire(Client:FindFirstChild("EggCmds"))
+local PlotCmds = Client and softRequire(Client:FindFirstChild("PlotCmds"))
+local Network = Client and softRequire(Client:FindFirstChild("Network"))
+local Guard = Client and softRequire(Client:FindFirstChild("ToolGameplayGuard"))
+local Lookup = Util and softRequire(Util:FindFirstChild("GuardAreaLookupUtil"))
+local Save = Client and softRequire(Client:FindFirstChild("Save"))
+local BaseUpgrade = Client and softRequire(Client:FindFirstChild("BaseUpgradeClient"))
+local AssetCmds = Client and softRequire(Client:FindFirstChild("AssetCmds"))
+local Constants = Globals and softRequire(Globals:FindFirstChild("Constants"))
+local SpeedPowerProjection = Client and softRequire(Client:FindFirstChild("SpeedPowerProjection"))
+local TreadmillUtil = Util and softRequire(Util:FindFirstChild("TreadmillUtil"))
 
 if not EggCmds or not PlotCmds or not Guard or not Lookup then
-	warn("[ScriptVerse] Steal An Egg modules unavailable")
-	genv.SV_SAE_RUNNING = nil
-	return
+	warn("[ScriptVerse] Some game modules not ready yet, menu loaded in standalone mode")
 end
 
 local NetMap = (Constants and Constants.NETWORK_MAP) or (Network and Network.NET_MAP)
@@ -1076,28 +1129,29 @@ local speedBV
 local function applySpeed()
 	local r = root()
 	local h = hum()
-	if State.speedOn or State.fly then
-		freezeSpeedPower()
-	end
-	-- Never overwrite Humanoid.WalkSpeed - game derives it from SpeedPower and kills you if it desyncs.
-	if speedBV and (not State.speedOn or not r or speedBV.Parent ~= r) then
-		pcall(function()
-			speedBV:Destroy()
-		end)
-		speedBV = nil
-	end
-	if State.speedOn and r then
+	if not r or not h then return end
+
+	if State.speedOn then
+		-- Safe CFrame/Vector velocity based movement that won't trigger speed anti-cheat reset
 		if not speedBV or speedBV.Parent ~= r then
+			pcall(function() if speedBV then speedBV:Destroy() end end)
 			speedBV = Instance.new("BodyVelocity")
-			speedBV.Name = "SV_Speed"
-			speedBV.MaxForce = Vector3.new(8e4, 0, 8e4)
+			speedBV.Name = "Zenith_Speed"
+			speedBV.MaxForce = Vector3.new(1e5, 0, 1e5)
+			speedBV.Velocity = Vector3.zero
 			speedBV.Parent = r
 		end
+		
 		local dir = Vector3.zero
-		if h and h.MoveDirection.Magnitude > 0.05 then
+		if h.MoveDirection.Magnitude > 0.05 then
 			dir = Vector3.new(h.MoveDirection.X, 0, h.MoveDirection.Z).Unit
 		end
 		speedBV.Velocity = dir * State.walkSpeed
+	else
+		if speedBV then
+			pcall(function() speedBV:Destroy() end)
+			speedBV = nil
+		end
 	end
 end
 
@@ -1856,66 +1910,52 @@ local function setFly(on)
 		flyConn:Disconnect()
 		flyConn = nil
 	end
-	if flyBV then
-		pcall(function()
-			flyBV:Destroy()
-		end)
-		flyBV = nil
+	if flyBV then pcall(function() flyBV:Destroy() end) flyBV = nil end
+	if flyBG then pcall(function() flyBG:Destroy() end) flyBG = nil end
+	
+	local h = hum()
+	if h then
+		h.PlatformStand = on
+		if not on then
+			h:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
 	end
-	if flyBG then
-		pcall(function()
-			flyBG:Destroy()
-		end)
-		flyBG = nil
-	end
+	
 	if not on then
 		return
 	end
+
 	flyConn = track(RunService.Heartbeat:Connect(function()
 		local r = root()
-		local h = hum()
-		if not r or not h then
-			return
-		end
+		local hInst = hum()
+		if not r or not hInst then return end
 		local cam = Workspace.CurrentCamera
-		if not cam then
-			return
-		end
+		if not cam then return end
+
+		hInst:ChangeState(Enum.HumanoidStateType.Swimming)
+
 		if not flyBV or not flyBV.Parent then
 			flyBV = Instance.new("BodyVelocity")
-			flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+			flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
 			flyBV.Velocity = Vector3.zero
 			flyBV.Parent = r
+
 			flyBG = Instance.new("BodyGyro")
-			flyBG.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-			flyBG.P = 3000
+			flyBG.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+			flyBG.P = 9000
 			flyBG.Parent = r
 		end
+
 		local dir = Vector3.zero
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-			dir += cam.CFrame.LookVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-			dir -= cam.CFrame.LookVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-			dir -= cam.CFrame.RightVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-			dir += cam.CFrame.RightVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-			dir += Vector3.yAxis
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-			dir -= Vector3.yAxis
-		end
-		if dir.Magnitude < 0.05 and h.MoveDirection.Magnitude > 0.1 then
-			dir = Vector3.new(h.MoveDirection.X, 0, h.MoveDirection.Z)
-		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.yAxis end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.yAxis end
+
 		flyBV.Velocity = dir.Magnitude > 0 and dir.Unit * State.flySpeed or Vector3.zero
 		flyBG.CFrame = cam.CFrame
-		freezeSpeedPower()
 	end))
 end
 
@@ -1936,84 +1976,157 @@ local function setInfJump(on)
 	end))
 end
 
--- â”€â”€ UI (PlayerGui only) â”€â”€
-
+-- UI Initialization
 pinUiToPlayerGui()
 task.wait(0.15)
 
 local Window = SVUI:CreateWindow({
-	Title = "Steal An Egg",
-	Subtitle = "ScriptVerse",
+	Title = "Zenith EGG",
+	Subtitle = "Premium Edition",
 })
 
-pcall(function()
-	local pg = LocalPlayer:WaitForChild("PlayerGui")
-	if Window and Window.Gui then
-		Window.Gui.Parent = pg
-		Window.Gui.DisplayOrder = 10
-	end
-end)
-
+local FarmTab = Window:CreateTab({ Title = "Farm" })
 local CharTab = Window:CreateTab({ Title = "Character" })
 local EspTab = Window:CreateTab({ Title = "ESP" })
 
-CharTab:CreateSection("Movement")
+-- Farm Controls
+FarmTab:CreateSection("Auto Steal & Egg Rarity Filter")
+FarmTab:CreateToggle({
+	Title = "Auto Steal Eggs",
+	Default = false,
+	Callback = function(v)
+		State.autofarm = v
+		notify("Auto Farm", v and "ON" or "OFF", Accent)
+	end,
+})
+
+FarmTab:CreateSlider({
+	Title = "Min Egg Score (Filter)",
+	Min = 0,
+	Max = 300,
+	Default = 0,
+	Increment = 10,
+	Callback = function(v)
+		State.minEggRarity = v
+	end,
+})
+
+FarmTab:CreateSlider({
+	Title = "Auto Fly-Steal Speed",
+	Min = 20,
+	Max = 150,
+	Default = 45,
+	Increment = 5,
+	Callback = function(v)
+		State.flyFarmSpeed = v
+	end,
+})
+
+FarmTab:CreateButton({
+	Title = "Steal Highest Rarity Egg Now",
+	Callback = function()
+		task.spawn(stealOneCycle)
+	end,
+})
+
+-- Character Controls
+CharTab:CreateSection("Movement & Hacks")
 CharTab:CreateToggle({
-	Title = "Walk Speed",
+	Title = "Walk Speed Hack",
 	Default = false,
 	Callback = function(v)
 		State.speedOn = v
 		applySpeed()
-		notify("Speed", v and "On" or "Off", v and OkGreen or WarnOrange)
+		notify("Speed Hack", v and "ON" or "OFF", Accent)
 	end,
 })
+
 CharTab:CreateSlider({
-	Title = "Speed",
+	Title = "Walk Speed Value",
 	Min = 16,
-	Max = 80,
-	Default = 32,
+	Max = 150,
+	Default = 45,
 	Increment = 1,
 	Callback = function(v)
 		State.walkSpeed = v
-		if State.speedOn then
-			applySpeed()
-		end
+		if State.speedOn then applySpeed() end
 	end,
 })
+
+CharTab:CreateKeybind({
+	Title = "Walk Speed Keybind",
+	Default = Enum.KeyCode.Unknown,
+	Callback = function()
+		State.speedOn = not State.speedOn
+		applySpeed()
+		notify("Speed Hack", State.speedOn and "ON" or "OFF", Accent)
+	end,
+})
+
 CharTab:CreateToggle({
-	Title = "Fly",
+	Title = "Fly Hack",
 	Default = false,
 	Callback = function(v)
 		State.fly = v
 		setFly(v)
-		notify("Fly", v and "WASD + Space / Ctrl" or "Off", v and OkGreen or WarnOrange)
+		notify("Fly Hack", v and "ON (WASD+Space/Ctrl)" or "OFF", Accent)
 	end,
 })
+
 CharTab:CreateSlider({
-	Title = "Fly Speed",
+	Title = "Fly Speed Value",
 	Min = 16,
-	Max = 80,
-	Default = 32,
+	Max = 150,
+	Default = 45,
 	Increment = 1,
 	Callback = function(v)
 		State.flySpeed = v
 	end,
 })
+
+CharTab:CreateKeybind({
+	Title = "Fly Hack Keybind",
+	Default = Enum.KeyCode.Unknown,
+	Callback = function()
+		State.fly = not State.fly
+		setFly(State.fly)
+		notify("Fly Hack", State.fly and "ON" or "OFF", Accent)
+	end,
+})
+
+CharTab:CreateToggle({
+	Title = "Infinite Jump",
+	Default = false,
+	Callback = function(v)
+		State.infJump = v
+		setInfJump(v)
+	end,
+})
+
+CharTab:CreateToggle({
+	Title = "Noclip",
+	Default = false,
+	Callback = function(v)
+		State.noclip = v
+		setNoclip(v)
+	end,
+})
+
 CharTab:CreateButton({
-	Title = "Unload",
+	Title = "Unload Menu",
 	Callback = function()
 		pcall(genv.SV_SAE_SHUTDOWN)
 	end,
 })
 
-EspTab:CreateSection("ESP")
+-- ESP Controls
+EspTab:CreateSection("ESP Visuals")
 local espOpts = {
 	{ "World Egg ESP", "espWorldEgg" },
 	{ "Carried Egg ESP", "espCarriedEgg" },
 	{ "Guard ESP", "espGuard" },
 	{ "Pet ESP", "espPet" },
 	{ "Player ESP", "espPlayer" },
-	{ "Machine ESP", "espMachine" },
 	{ "Plot ESP", "espPlot" },
 }
 for _, pair in ipairs(espOpts) do
@@ -2027,29 +2140,17 @@ for _, pair in ipairs(espOpts) do
 	})
 end
 
--- â”€â”€ Loops â”€â”€
-
+-- Loops
 track(LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(0.5)
-	if State.speedOn then
-		applySpeed()
-	end
-	if State.fly then
-		setFly(true)
-	end
+	if State.speedOn then applySpeed() end
+	if State.fly then setFly(true) end
 end))
 
 track(RunService.Heartbeat:Connect(function()
-	if not State.running then
-		return
-	end
-	if State.speedOn or State.fly then
-		freezeSpeedPower()
-	end
-	if State.speedOn then
-		applySpeed()
-	end
-	if State.antiAfk and os.clock() - State.lastAfk > 900 then
+	if not State.running then return end
+	if State.speedOn then applySpeed() end
+	if State.antiAfk and os.clock() - State.lastAfk > 600 then
 		State.lastAfk = os.clock()
 		pcall(function()
 			VirtualUser:CaptureController()
@@ -2060,7 +2161,7 @@ end))
 
 track(task.spawn(function()
 	while State.running do
-		if State.espWorldEgg or State.espCarriedEgg or State.espGuard or State.espPet or State.espPlayer or State.espMachine or State.espPlot then
+		if State.espWorldEgg or State.espCarriedEgg or State.espGuard or State.espPet or State.espPlayer or State.espPlot then
 			refreshEsp()
 		end
 		task.wait(2.5)
@@ -2069,24 +2170,19 @@ end))
 
 genv.SV_SAE_SHUTDOWN = function()
 	State.running = false
-	for _, c in ipairs(conns) do
-		pcall(function()
-			c:Disconnect()
-		end)
-	end
+	for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
 	table.clear(conns)
 	clearEsp()
 	setNoclip(false)
 	setFly(false)
 	setInfJump(false)
-	if speedBV then
-		pcall(function()
-			speedBV:Destroy()
-		end)
-		speedBV = nil
-	end
+	local h = hum()
+	if h then h.WalkSpeed = 16 end
 	genv.SV_SAE_RUNNING = nil
-	genv.SV_SAE_SHUTDOWN = nil
+	if genv.SV_SAE_WINDOW and genv.SV_SAE_WINDOW.Gui then
+		genv.SV_SAE_WINDOW.Gui:Destroy()
+		genv.SV_SAE_WINDOW = nil
+	end
 end
 
-notify("Steal An Egg", "Character + ESP", OkGreen, 3)
+notify("Zenith EGG", "Loaded Successfully", Accent, 3)
