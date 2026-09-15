@@ -159,20 +159,474 @@ local function pinUiToPlayerGui()
 	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
+local function createFallbackSVUI()
+	local FallbackUI = {}
+	local CoreGui = game:GetService("CoreGui")
+	local Players = game:GetService("Players")
+	local TweenService = game:GetService("TweenService")
+	local UserInputService = game:GetService("UserInputService")
+	local LocalPlayer = Players.LocalPlayer
+
+	local parentGui = (gethui and gethui()) or CoreGui:FindFirstChild("RobloxGui") or LocalPlayer:WaitForChild("PlayerGui")
+
+	function FallbackUI:Notify(opts)
+		opts = opts or {}
+		local title = opts.Title or "Notification"
+		local content = opts.Content or ""
+		local dur = opts.Duration or 2.5
+		local col = opts.Color or Color3.fromRGB(120, 220, 160)
+
+		local sg = parentGui:FindFirstChild("SVUI_NotifyGui")
+		if not sg then
+			sg = Instance.new("ScreenGui")
+			sg.Name = "SVUI_NotifyGui"
+			sg.ResetOnSpawn = false
+			sg.DisplayOrder = 100
+			sg.Parent = parentGui
+		end
+
+		local holder = sg:FindFirstChild("Holder")
+		if not holder then
+			holder = Instance.new("Frame")
+			holder.Name = "Holder"
+			holder.Size = UDim2.new(0, 260, 1, -20)
+			holder.Position = UDim2.new(1, -270, 0, 10)
+			holder.BackgroundTransparency = 1
+			holder.Parent = sg
+
+			local layout = Instance.new("UIListLayout")
+			layout.SortOrder = Enum.SortOrder.LayoutOrder
+			layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+			layout.Padding = UDim.new(0, 8)
+			layout.Parent = holder
+		end
+
+		local card = Instance.new("Frame")
+		card.Size = UDim2.new(1, 0, 0, 54)
+		card.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
+		card.BorderSizePixel = 0
+		card.Parent = holder
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = card
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = col
+		stroke.Thickness = 1.2
+		stroke.Transparency = 0.3
+		stroke.Parent = card
+
+		local titleLbl = Instance.new("TextLabel")
+		titleLbl.Size = UDim2.new(1, -16, 0, 22)
+		titleLbl.Position = UDim2.new(0, 10, 0, 6)
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.Font = Enum.Font.SourceSansBold
+		titleLbl.TextSize = 15
+		titleLbl.TextColor3 = col
+		titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+		titleLbl.Text = title
+		titleLbl.Parent = card
+
+		local contentLbl = Instance.new("TextLabel")
+		contentLbl.Size = UDim2.new(1, -16, 0, 20)
+		contentLbl.Position = UDim2.new(0, 10, 0, 26)
+		contentLbl.BackgroundTransparency = 1
+		contentLbl.Font = Enum.Font.SourceSans
+		contentLbl.TextSize = 13
+		contentLbl.TextColor3 = Color3.fromRGB(200, 200, 210)
+		contentLbl.TextXAlignment = Enum.TextXAlignment.Left
+		contentLbl.Text = content
+		contentLbl.Parent = card
+
+		task.delay(dur, function()
+			if card and card.Parent then
+				pcall(function()
+					TweenService:Create(card, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+					TweenService:Create(stroke, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+					TweenService:Create(titleLbl, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+					TweenService:Create(contentLbl, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+				end)
+				task.wait(0.35)
+				card:Destroy()
+			end
+		end)
+	end
+
+	function FallbackUI:CreateWindow(opts)
+		opts = opts or {}
+		local winTitle = opts.Title or "ScriptVerse"
+		local winSub = opts.Subtitle or ""
+
+		local sg = Instance.new("ScreenGui")
+		sg.Name = "ScriptVerse_UI"
+		sg.ResetOnSpawn = false
+		sg.DisplayOrder = 20
+		sg.Parent = parentGui
+
+		local main = Instance.new("Frame")
+		main.Name = "MainFrame"
+		main.Size = UDim2.new(0, 480, 0, 320)
+		main.Position = UDim2.new(0.5, -240, 0.5, -160)
+		main.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+		main.BorderSizePixel = 0
+		main.Active = true
+		main.ClipsDescendants = true
+		main.Parent = sg
+
+		local mainCorner = Instance.new("UICorner")
+		mainCorner.CornerRadius = UDim.new(0, 10)
+		mainCorner.Parent = main
+
+		local mainStroke = Instance.new("UIStroke")
+		mainStroke.Color = Color3.fromRGB(50, 180, 130)
+		mainStroke.Thickness = 1.5
+		mainStroke.Parent = main
+
+		local dragging, dragInput, dragStart, startPos
+		local topBar = Instance.new("Frame")
+		topBar.Name = "TopBar"
+		topBar.Size = UDim2.new(1, 0, 0, 40)
+		topBar.BackgroundColor3 = Color3.fromRGB(25, 28, 36)
+		topBar.BorderSizePixel = 0
+		topBar.Parent = main
+
+		local topCorner = Instance.new("UICorner")
+		topCorner.CornerRadius = UDim.new(0, 10)
+		topCorner.Parent = topBar
+
+		local titleText = Instance.new("TextLabel")
+		titleText.Size = UDim2.new(1, -60, 1, 0)
+		titleText.Position = UDim2.new(0, 14, 0, 0)
+		titleText.BackgroundTransparency = 1
+		titleText.Font = Enum.Font.SourceSansBold
+		titleText.TextSize = 16
+		titleText.TextColor3 = Color3.fromRGB(120, 220, 160)
+		titleText.TextXAlignment = Enum.TextXAlignment.Left
+		titleText.Text = winTitle .. (winSub ~= "" and (" - " .. winSub) or "")
+		titleText.Parent = topBar
+
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Size = UDim2.new(0, 28, 0, 28)
+		closeBtn.Position = UDim2.new(1, -34, 0, 6)
+		closeBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+		closeBtn.Font = Enum.Font.SourceSansBold
+		closeBtn.TextSize = 14
+		closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeBtn.Text = "X"
+		closeBtn.Parent = topBar
+
+		local closeCorner = Instance.new("UICorner")
+		closeCorner.CornerRadius = UDim.new(0, 6)
+		closeCorner.Parent = closeBtn
+
+		closeBtn.MouseButton1Click:Connect(function()
+			main.Visible = not main.Visible
+		end)
+
+		topBar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = main.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						dragging = false
+					end
+				end)
+			end
+		end)
+		topBar.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+				dragInput = input
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if input == dragInput and dragging then
+				local delta = input.Position - dragStart
+				main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+
+		local tabHolder = Instance.new("Frame")
+		tabHolder.Size = UDim2.new(0, 120, 1, -40)
+		tabHolder.Position = UDim2.new(0, 0, 0, 40)
+		tabHolder.BackgroundColor3 = Color3.fromRGB(22, 24, 30)
+		tabHolder.BorderSizePixel = 0
+		tabHolder.Parent = main
+
+		local tabLayout = Instance.new("UIListLayout")
+		tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		tabLayout.Padding = UDim.new(0, 4)
+		tabLayout.Parent = tabHolder
+
+		local tabPadding = Instance.new("UIPadding")
+		tabPadding.PaddingTop = UDim.new(0, 8)
+		tabPadding.PaddingLeft = UDim.new(0, 6)
+		tabPadding.PaddingRight = UDim.new(0, 6)
+		tabPadding.Parent = tabHolder
+
+		local contentArea = Instance.new("Frame")
+		contentArea.Size = UDim2.new(1, -125, 1, -45)
+		contentArea.Position = UDim2.new(0, 123, 0, 43)
+		contentArea.BackgroundTransparency = 1
+		contentArea.Parent = main
+
+		local windowObj = { Gui = sg }
+		local tabs = {}
+		local firstTab = true
+
+		function windowObj:CreateTab(tabOpts)
+			tabOpts = tabOpts or {}
+			local tabName = tabOpts.Title or "Tab"
+
+			local isFirst = firstTab
+			firstTab = false
+
+			local tabBtn = Instance.new("TextButton")
+			tabBtn.Size = UDim2.new(1, 0, 0, 32)
+			tabBtn.BackgroundColor3 = isFirst and Color3.fromRGB(35, 42, 52) or Color3.fromRGB(28, 30, 38)
+			tabBtn.Font = Enum.Font.SourceSansBold
+			tabBtn.TextSize = 14
+			tabBtn.TextColor3 = isFirst and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(170, 170, 180)
+			tabBtn.Text = tabName
+			tabBtn.Parent = tabHolder
+
+			local tabCorner = Instance.new("UICorner")
+			tabCorner.CornerRadius = UDim.new(0, 6)
+			tabCorner.Parent = tabBtn
+
+			local tabFrame = Instance.new("ScrollingFrame")
+			tabFrame.Size = UDim2.new(1, 0, 1, 0)
+			tabFrame.BackgroundTransparency = 1
+			tabFrame.BorderSizePixel = 0
+			tabFrame.ScrollBarThickness = 4
+			tabFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 90, 110)
+			tabFrame.Visible = isFirst
+			tabFrame.Parent = contentArea
+
+			local containerLayout = Instance.new("UIListLayout")
+			containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			containerLayout.Padding = UDim.new(0, 6)
+			containerLayout.Parent = tabFrame
+
+			containerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+				tabFrame.CanvasSize = UDim2.new(0, 0, 0, containerLayout.AbsoluteContentSize.Y + 12)
+			end)
+
+			tabBtn.MouseButton1Click:Connect(function()
+				for _, t in ipairs(tabs) do
+					t.Frame.Visible = false
+					t.Button.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
+					t.Button.TextColor3 = Color3.fromRGB(170, 170, 180)
+				end
+				tabFrame.Visible = true
+				tabBtn.BackgroundColor3 = Color3.fromRGB(35, 42, 52)
+				tabBtn.TextColor3 = Color3.fromRGB(120, 220, 160)
+			end)
+
+			local tabObj = {}
+			table.insert(tabs, { Button = tabBtn, Frame = tabFrame })
+
+			function tabObj:CreateSection(secName)
+				local secLbl = Instance.new("TextLabel")
+				secLbl.Size = UDim2.new(1, -10, 0, 24)
+				secLbl.BackgroundTransparency = 1
+				secLbl.Font = Enum.Font.SourceSansBold
+				secLbl.TextSize = 14
+				secLbl.TextColor3 = Color3.fromRGB(120, 220, 160)
+				secLbl.TextXAlignment = Enum.TextXAlignment.Left
+				secLbl.Text = "--- " .. tostring(secName) .. " ---"
+				secLbl.Parent = tabFrame
+			end
+
+			function tabObj:CreateToggle(tOpts)
+				tOpts = tOpts or {}
+				local title = tOpts.Title or "Toggle"
+				local state = tOpts.Default or false
+				local cb = tOpts.Callback or function() end
+
+				local frame = Instance.new("Frame")
+				frame.Size = UDim2.new(1, -10, 0, 34)
+				frame.BackgroundColor3 = Color3.fromRGB(26, 29, 38)
+				frame.BorderSizePixel = 0
+				frame.Parent = tabFrame
+
+				local fc = Instance.new("UICorner")
+				fc.CornerRadius = UDim.new(0, 6)
+				fc.Parent = frame
+
+				local lbl = Instance.new("TextLabel")
+				lbl.Size = UDim2.new(1, -60, 1, 0)
+				lbl.Position = UDim2.new(0, 10, 0, 0)
+				lbl.BackgroundTransparency = 1
+				lbl.Font = Enum.Font.SourceSans
+				lbl.TextSize = 14
+				lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+				lbl.TextXAlignment = Enum.TextXAlignment.Left
+				lbl.Text = title
+				lbl.Parent = frame
+
+				local btn = Instance.new("TextButton")
+				btn.Size = UDim2.new(0, 42, 0, 22)
+				btn.Position = UDim2.new(1, -50, 0.5, -11)
+				btn.BackgroundColor3 = state and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(60, 65, 75)
+				btn.Font = Enum.Font.SourceSansBold
+				btn.TextSize = 12
+				btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				btn.Text = state and "ON" or "OFF"
+				btn.Parent = frame
+
+				local bc = Instance.new("UICorner")
+				bc.CornerRadius = UDim.new(0, 11)
+				bc.Parent = btn
+
+				btn.MouseButton1Click:Connect(function()
+					state = not state
+					btn.BackgroundColor3 = state and Color3.fromRGB(40, 180, 100) or Color3.fromRGB(60, 65, 75)
+					btn.Text = state and "ON" or "OFF"
+					pcall(cb, state)
+				end)
+			end
+
+			function tabObj:CreateSlider(sOpts)
+				sOpts = sOpts or {}
+				local title = sOpts.Title or "Slider"
+				local minVal = sOpts.Min or 0
+				local maxVal = sOpts.Max or 100
+				local curVal = sOpts.Default or minVal
+				local inc = sOpts.Increment or 1
+				local cb = sOpts.Callback or function() end
+
+				local frame = Instance.new("Frame")
+				frame.Size = UDim2.new(1, -10, 0, 46)
+				frame.BackgroundColor3 = Color3.fromRGB(26, 29, 38)
+				frame.BorderSizePixel = 0
+				frame.Parent = tabFrame
+
+				local fc = Instance.new("UICorner")
+				fc.CornerRadius = UDim.new(0, 6)
+				fc.Parent = frame
+
+				local lbl = Instance.new("TextLabel")
+				lbl.Size = UDim2.new(1, -70, 0, 20)
+				lbl.Position = UDim2.new(0, 10, 0, 4)
+				lbl.BackgroundTransparency = 1
+				lbl.Font = Enum.Font.SourceSans
+				lbl.TextSize = 14
+				lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+				lbl.TextXAlignment = Enum.TextXAlignment.Left
+				lbl.Text = title
+				lbl.Parent = frame
+
+				local valLbl = Instance.new("TextLabel")
+				valLbl.Size = UDim2.new(0, 50, 0, 20)
+				valLbl.Position = UDim2.new(1, -60, 0, 4)
+				valLbl.BackgroundTransparency = 1
+				valLbl.Font = Enum.Font.SourceSansBold
+				valLbl.TextSize = 14
+				valLbl.TextColor3 = Color3.fromRGB(120, 220, 160)
+				valLbl.TextXAlignment = Enum.TextXAlignment.Right
+				valLbl.Text = tostring(curVal)
+				valLbl.Parent = frame
+
+				local barBg = Instance.new("Frame")
+				barBg.Size = UDim2.new(1, -20, 0, 8)
+				barBg.Position = UDim2.new(0, 10, 0, 28)
+				barBg.BackgroundColor3 = Color3.fromRGB(45, 50, 62)
+				barBg.BorderSizePixel = 0
+				barBg.Parent = frame
+
+				local barCorner = Instance.new("UICorner")
+				barCorner.CornerRadius = UDim.new(0, 4)
+				barCorner.Parent = barBg
+
+				local fill = Instance.new("Frame")
+				local pct = math.clamp((curVal - minVal) / (maxVal - minVal), 0, 1)
+				fill.Size = UDim2.new(pct, 0, 1, 0)
+				fill.BackgroundColor3 = Color3.fromRGB(120, 220, 160)
+				fill.BorderSizePixel = 0
+				fill.Parent = barBg
+
+				local fillCorner = Instance.new("UICorner")
+				fillCorner.CornerRadius = UDim.new(0, 4)
+				fillCorner.Parent = fill
+
+				local sliding = false
+				local function updateSlider(inputPos)
+					local relX = math.clamp((inputPos.X - barBg.AbsolutePosition.X) / barBg.AbsoluteSize.X, 0, 1)
+					local rawVal = minVal + (maxVal - minVal) * relX
+					local val = math.floor(rawVal / inc + 0.5) * inc
+					val = math.clamp(val, minVal, maxVal)
+					curVal = val
+					valLbl.Text = tostring(curVal)
+					fill.Size = UDim2.new((curVal - minVal) / (maxVal - minVal), 0, 1, 0)
+					pcall(cb, curVal)
+				end
+
+				barBg.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						sliding = true
+						updateSlider(input.Position)
+					end
+				end)
+				UserInputService.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						sliding = false
+					end
+				end)
+				UserInputService.InputChanged:Connect(function(input)
+					if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+						updateSlider(input.Position)
+					end
+				end)
+			end
+
+			function tabObj:CreateButton(bOpts)
+				bOpts = bOpts or {}
+				local title = bOpts.Title or "Button"
+				local cb = bOpts.Callback or function() end
+
+				local btn = Instance.new("TextButton")
+				btn.Size = UDim2.new(1, -10, 0, 32)
+				btn.BackgroundColor3 = Color3.fromRGB(40, 45, 58)
+				btn.Font = Enum.Font.SourceSansBold
+				btn.TextSize = 14
+				btn.TextColor3 = Color3.fromRGB(240, 240, 250)
+				btn.Text = title
+				btn.Parent = tabFrame
+
+				local bc = Instance.new("UICorner")
+				bc.CornerRadius = UDim.new(0, 6)
+				bc.Parent = btn
+
+				btn.MouseButton1Click:Connect(function()
+					pcall(cb)
+				end)
+			end
+
+			return tabObj
+		end
+
+		return windowObj
+	end
+
+	return FallbackUI
+end
+
 local SVUI = genv.SVUI or _G.SVUI
 if not SVUI then
 	pinUiToPlayerGui()
 	local ok, lib = pcall(function()
 		return loadstring(game:HttpGet("https://scriptversekey.xyz/svui.lua"))()
 	end)
-	if ok then
+	if ok and type(lib) == "table" then
 		SVUI = lib
 	end
 end
 if not SVUI then
-	warn("[ScriptVerse] SVUI failed to load")
-	genv.SV_SAE_RUNNING = nil
-	return
+	warn("[ScriptVerse] SVUI external library failed to load - using built-in UI fallback")
+	SVUI = createFallbackSVUI()
 end
 
 local Accent = Color3.fromRGB(120, 220, 160)
