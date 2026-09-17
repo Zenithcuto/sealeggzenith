@@ -79,10 +79,11 @@ local function J(e,r,...)
     end
     return nil
 end
-local K=J( "RF/EggWorld/AskPlaceEgg" , "AskPlaceEgg" )
-local c=J( "RF/EggWorld/AskLiveSnapshot" , "AskLiveSnapshot" )
+
+local K=J( "RF/EggWorld/AskPlaceEgg" , "AskPlaceEgg" ) 
+local c=J( "RF/EggWorld/AskLiveSnapshot" , "AskLiveSnapshot" ) 
 local v=J( "RF/Homestead/AskState" , "RF/Plots/AskState" )or J( "AskState" )
-local i=J( "RF/EggWorld/AskFieldEggCarry" , "AskFieldEggCarry" )
+local i=J( "RF/EggWorld/AskFieldEggCarry" , "AskFieldEggCarry" ) 
 local R=J( "RF/EggWorld/AskFieldEggSnapshot" , "AskFieldEggSnapshot" )or J( "Eggs: RequestAreaEggSnapshot" , "RequestAreaEggSnapshot" )
 local g=J( "RF/EggWorld/AskHatch" , "AskHatch" )or J( "Eggs: RequestHatchEgg" )
 local Q=J( "RF/EggWorld/AskFinishHatch" , "AskFinishHatch" )or J( "Eggs: RequestCompleteHatchEgg" )
@@ -94,156 +95,6 @@ local D=J( "RF/Treadmill/AskTierRaise" , "Treadmills: RequestUpgrade" , "AskTier
 local C=J( "RF/Trailwear/AskPurchase" , "Trailwear: RequestPurchase" , "AskPurchase" )
 local q=J( "RF/Trailwear/AskChoose" , "Trailwear: RequestEquip" , "AskChoose" )
 local n=J( "RF/Trailwear/AskDoff" , "Trailwear: RequestUnequip" , "AskDoff" )H(string.format ( "[RemoteCheck] Carry: %s | Snapshot: %s | Place: %s | Hatch: %s | FinishHatch: %s | Strike: %s | Toll: %s | Doff: %s" ,tostring(i~=nil),tostring(R~=nil),tostring(K~=nil),tostring(g~=nil),tostring(Q~=nil),tostring(P~=nil),tostring(N~=nil),tostring(U~=nil)))
-
--- =========================================================================
--- [ANTIGRAVITY FIX] CLIENT AC BYPASS, SPEEDPOWER FREEZE & NETWORK PIVOT SYNC
--- =========================================================================
-local function bypassClientDetections()
-    if typeof(filtergc) ~= "function" or typeof(debug) ~= "table" or typeof(debug.getupvalues) ~= "function" then
-        return false, "no filtergc"
-    end
-    local ok, fn = pcall(function()
-        return filtergc("function", {
-            Constants = { "gmatch", "GetFullName" },
-        }, true)
-    end)
-    if not ok or type(fn) ~= "function" then
-        return false, "filter miss"
-    end
-    local setMeta = (typeof(setrawmetatable) == "function" and setrawmetatable)
-        or (typeof(setmetatable) == "function" and setmetatable)
-    if not setMeta then
-        return false, "no setmeta"
-    end
-    local blocked = 0
-    local okUv, ups = pcall(debug.getupvalues, fn)
-    if not okUv or type(ups) ~= "table" then
-        return false, "no upvalues"
-    end
-    for _, tbl in pairs(ups) do
-        if typeof(tbl) == "table" then
-            local okSet = pcall(setMeta, tbl, {
-                __newindex = function() end,
-            })
-            if okSet then
-                blocked = blocked + 1
-            end
-        end
-    end
-    return blocked > 0, blocked
-end
-pcall(bypassClientDetections)
-
-local function freezeSpeedPower()
-    pcall(function()
-        local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
-        local client = lib and (lib:FindFirstChild("Client") or lib:WaitForChild("Client", 5))
-        local speedProj = client and (client:FindFirstChild("SpeedPowerProjection") and require(client.SpeedPowerProjection))
-        local fn = speedProj and speedProj.GetSpeedPower
-        if type(fn) == "function" and type(setupvalue) == "function" and type(getupvalue) == "function" then
-            for i = 1, 12 do
-                local v = getupvalue(fn, i)
-                if type(v) == "number" then
-                    setupvalue(fn, i, 1e7)
-                    break
-                end
-            end
-        end
-    end)
-    pcall(function()
-        local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
-        local client = lib and (lib:FindFirstChild("Client") or lib:WaitForChild("Client", 5))
-        local saveMod = client and (client:FindFirstChild("Save") and require(client.Save))
-        local d = saveMod and saveMod.Get and saveMod.Get()
-        if type(d) == "table" and type(d.SpeedPower) == "number" and d.SpeedPower < 1e6 then
-            d.SpeedPower = 1e7
-        end
-    end)
-end
-pcall(freezeSpeedPower)
-
-local NetworkMod = nil
-pcall(function()
-    local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
-    local client = lib and (lib:FindFirstChild("Client") or lib:WaitForChild("Client", 5))
-    if client and client:FindFirstChild("Network") then
-        NetworkMod = require(client.Network)
-    end
-end)
-
-local ConstantsMod = nil
-pcall(function()
-    local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
-    local globals = lib and (lib:FindFirstChild("Globals") or lib:WaitForChild("Globals", 5))
-    if globals and globals:FindFirstChild("Constants") then
-        ConstantsMod = require(globals.Constants)
-    end
-end)
-
-local NetMap = (ConstantsMod and ConstantsMod.NETWORK_MAP) or (NetworkMod and NetworkMod.NET_MAP)
-local PivotKey = (NetMap and NetMap.ClientCharacter and NetMap.ClientCharacter.SET_PIVOT) or "ClientCharacter: SetPivot"
-
-local function firePivot(cf)
-    if not cf then return end
-    pcall(function()
-        if NetworkMod and PivotKey and NetworkMod.Fire then
-            NetworkMod.Fire(PivotKey, cf)
-        end
-    end)
-    pcall(function()
-        local rmt = J("ClientCharacter: SetPivot", "SetPivot")
-        if rmt then
-            if rmt:IsA("RemoteEvent") then
-                rmt:FireServer(cf)
-            elseif rmt:IsA("RemoteFunction") then
-                rmt:InvokeServer(cf)
-            end
-        end
-    end)
-end
-
-local function protectHumanoid(char)
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    pcall(function()
-        hum.BreakJointsOnDeath = false
-        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-        hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        if hum.Health > 0 and hum.Health < 100 then
-            hum.Health = 100
-        end
-    end)
-    if not hum:FindFirstChild("ZenithGodConn") then
-        local tag = Instance.new("BoolValue")
-        tag.Name = "ZenithGodConn"
-        tag.Parent = hum
-        hum.HealthChanged:Connect(function(hp)
-            if (h and (h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg or h.godmode)) and hp < 100 and hp > 0 then
-                hum.Health = 100
-            end
-        end)
-    end
-end
-
-y.Stepped:Connect(function()
-    if h and (h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg or h.godmode) then
-        local char = o.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end
-end)
-
-o.CharacterAdded:Connect(function(char)
-    task.wait(0.2)
-    protectHumanoid(char)
-end)
 
 local f={[ "Light Dark" ]= 1300 ,[ "LightDark" ]= 1300 ;
 [ "Titan Temple" ]= 1100 ,[ "Cherry Blossom" ]= 1000 ,[ "Cosmic" ]= 900 ;
@@ -270,12 +121,14 @@ local E= 525
 local b= 620
 local A= 130
 local S=CFrame.new ( 4773.7587890625 , 70.392112731934 , -315.73501586914 )
+
 local Z= "DiceHub_FlightSpeed.txt"
 local z= "DiceHub_EggSelectConfig.json"
 local d={[ "Light Dark" ]=Color3.fromRGB ( 168 , 85 , 247 ),[ "Titan Temple" ]=Color3.fromRGB ( 245 , 158 , 11 );
 [ "Cherry Blossom" ]=Color3.fromRGB ( 236 , 72 , 153 );
 [ "Cosmic" ]=Color3.fromRGB ( 6 , 182 , 212 ),[ "Prehistoric" ]=Color3.fromRGB ( 16 , 185 , 129 ),[ "Abyss Ocean" ]=Color3.fromRGB ( 59 , 130 , 246 );
 [ "Volcano" ]=Color3.fromRGB ( 239 , 68 , 68 ),[ "Snow" ]=Color3.fromRGB ( 147 , 197 , 253 ),[ "Jungle" ]=Color3.fromRGB ( 34 , 197 , 94 ),[ "Desert" ]=Color3.fromRGB ( 234 , 179 , 8 ),[ "Lake" ]=Color3.fromRGB ( 20 , 184 , 166 ),[ "Forest" ]=Color3.fromRGB ( 22 , 163 , 74 )}
+
 local X={ "Divine" , "Eternal" , "Secret" ;
 "Cosmic" , "Mythic" , "Legendary" ;
 "Epic" ;
@@ -425,6 +278,8 @@ local W=T()h={[ "godmode" ]= true ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true 
 [ "glidingToTarget" ]= false ;
 [ "securingEgg" ]= false ,[ "glideSpeed" ]=O();
 [ "espWorldEgg" ]= false ,[ "espGardenEgg" ]= false ,[ "espPlayer" ]= false ,[ "espMaxDist" ]= 5000 ;
+[ "walkSpeed" ]= 32 ,[ "enableWalkSpeed" ]= true ,[ "speedBypass" ]= true ,[ "antiKnockback" ]= true ,[ "antiTrap" ]= true ,[ "antiCarrySlowdown" ]= true ;
+
 [ "selectedZones" ]=W.selectedZones ;
 [ "selectedRarities" ]=W.selectedRarities ;
 [ "alwaysCollectSecretPlus" ]=W.alwaysCollectSecretPlus ,[ "minRarityTier" ]=W.minRarityTier ,[ "autoTreadmill" ]=(W.autoTreadmill ~= false );
@@ -570,31 +425,28 @@ y4=function(...)
     return e
 end
 u4=function(e,...)
-    if h and h.isReturning then
-        return
-    end
     if not e and not((h.pureTweenFarm or h.autoFarmLoop or h.teleporting ))then
         return
     end
     local r=o.Character
-    local y=r and r:FindFirstChildOfClass( "Humanoid" )
     local u=o:FindFirstChild( "Backpack" )
-    if y and not (h and h.isReturning) then
-        pcall(function(...) y:UnequipTools()
-        end
-        )
-    end
-    if r and u and not (h and h.isReturning) then
-        for _,tool in ipairs(r:GetChildren())do
-            if tool:IsA( "Tool" ) and m(tool) then
-                pcall(function(...) tool.Parent =u
-                end
-                )
+    if r and u then
+        for _, item in ipairs(r:GetChildren()) do
+            -- ONLY unequip eggs! Never unequip swords, radars, baskets, punch or items!
+            if item:IsA( "Tool" ) and m(item) then
+                pcall(function(...) item.Parent = u end)
             end
         end
     end
 end
 w4=function(e,...)
+    if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
+        local e=e4()
+        if e then
+            pcall(u4)
+        end
+        return false
+    end
     local r,y=e4()
     if r then
         if e then
@@ -755,18 +607,31 @@ end
                 local u=e.Position
                 if u.X >= 530 and not string.find (tostring(y), "FirstArea" )then
                     if not k[y]then
-                        k[y]= true
-                        local u=r:GetAttribute( "Category" )or r:GetAttribute( "AssetCategory" )or r.Name
-                        local w=r:GetAttribute( "AreaId" )or r:GetAttribute( "Area" )
-                        local a=r:GetAttribute( "Rarity" )or r:GetAttribute( "RarityTier" )
-                        local V=r:GetAttribute( "RarityRank" )or r:GetAttribute( "Rank" )
-                        local H=r:GetAttribute( "Income" )or r:GetAttribute( "EarningRate" )
-                        local t=r:GetAttribute( "Scale" )or r:GetAttribute( "AssetScale" )or 1
-                        local s=r:GetAttribute( "Mutations" )or r:GetAttribute( "Mutation" )table.insert (j,{[ "Uid" ]=y,[ "AssetCategory" ]=u,[ "AreaId" ]=w;
-                        [ "Rarity" ]=a,[ "Rank" ]=V,[ "Income" ]=H,[ "BoundsCFrame" ]=e;
-                        [ "BottomCFrame" ]=e,[ "CFrame" ]=e;
-                        [ "State" ]= "Slot" ;
-                        [ "AssetScale" ]=t,[ "Mutations" ]=s,[ "PhysicalModel" ]=r})
+                        -- Only consider slots that ACTUALLY have an egg (prompt or egg child model)
+                        -- Ignore empty straw nests!
+                        local hasEggPrompt = r:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil
+                        local hasEggModel = false
+                        for _, child in ipairs(r:GetChildren()) do
+                            local cn = child.Name:lower()
+                            if cn:find("egg") or child:GetAttribute("EggUid") or child:GetAttribute("UID") or child:GetAttribute("Category") then
+                                hasEggModel = true
+                                break
+                            end
+                        end
+                        if hasEggPrompt or hasEggModel then
+                            k[y]= true
+                            local u=r:GetAttribute( "Category" )or r:GetAttribute( "AssetCategory" )or r.Name
+                            local w=r:GetAttribute( "AreaId" )or r:GetAttribute( "Area" )
+                            local a=r:GetAttribute( "Rarity" )or r:GetAttribute( "RarityTier" )
+                            local V=r:GetAttribute( "RarityRank" )or r:GetAttribute( "Rank" )
+                            local H=r:GetAttribute( "Income" )or r:GetAttribute( "EarningRate" )
+                            local t=r:GetAttribute( "Scale" )or r:GetAttribute( "AssetScale" )or 1
+                            local s=r:GetAttribute( "Mutations" )or r:GetAttribute( "Mutation" )table.insert (j,{[ "Uid" ]=y,[ "AssetCategory" ]=u,[ "AreaId" ]=w;
+                            [ "Rarity" ]=a,[ "Rank" ]=V,[ "Income" ]=H,[ "BoundsCFrame" ]=e;
+                            [ "BottomCFrame" ]=e,[ "CFrame" ]=e;
+                            [ "State" ]= "Slot" ;
+                            [ "AssetScale" ]=t,[ "Mutations" ]=s,[ "PhysicalModel" ]=r})
+                        end
                     else
                         for u,w in ipairs(j)do
                             if w.Uid ==y then
@@ -912,29 +777,46 @@ if typeof(hookmetamethod)== "function" and not _G._DesyncAntiRagdollHooked then
                 if y== "Sit" and(u== true and((h.pureTweenFarm or h.autoFarmLoop or h.isReturning or h.glidingToTarget )))then
                     return nil
                 end
+                if y== "WalkSpeed" and h and (h.antiCarrySlowdown or h.enableWalkSpeed) then
+                    local target = (h.enableWalkSpeed and h.walkSpeed) or 28
+                    local safeTarget = math.min(target, 26)
+                    if type(u) == "number" and u < safeTarget then
+                        return e(r, y, safeTarget)
+                    end
+                end
             end
         end
         return e(r,y,u)
     end
     ))
 end
+
+if typeof(hookmetamethod) == "function" and not _G._SpeedBypassIndexHooked then
+    _G._SpeedBypassIndexHooked = true
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", safeNewCClosure(function(self, prop)
+        if not executorCheckCaller() and typeof(self) == "Instance" then
+            if self:IsA("Humanoid") and prop == "WalkSpeed" then
+                -- Spoof WalkSpeed to 16 for all game anti-cheat scripts!
+                return 16
+            end
+        end
+        return oldIndex(self, prop)
+    end))
+end
 S4=function(e,...) e=e or o.Character
     if not e then
         return
     end
-    for _,r in ipairs(e:GetDescendants())do
-        if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
-            pcall(function(...) r:Destroy()
-            end
-            )
-        elseif r:IsA( "WeldConstraint" ) and string.find(r.Name, "RigidJointWeld_" )then
-            pcall(function(...) r:Destroy()
-            end
-            )
+    for _, r in ipairs(e:GetDescendants()) do
+        if r:IsA("BallSocketConstraint") or r:IsA("HingeConstraint") or r:IsA("NoCollisionConstraint") then
+            pcall(function(...) r:Destroy() end)
+        elseif r:IsA("WeldConstraint") and r.Name:find("RigidJointWeld_") then
+            pcall(function(...) r:Destroy() end)
         end
     end
-    for _,r in ipairs(e:GetDescendants())do
-        if r:IsA( "Motor6D" )then
+    for _, r in ipairs(e:GetDescendants()) do
+        if r:IsA("Motor6D") then
             r.Enabled = true
         end
     end
@@ -949,27 +831,26 @@ Z4=function(e,...)
     end
     local r=e:FindFirstChildOfClass( "Humanoid" )
     if r then
-        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )
-        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )
-        r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )
-        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )
-        r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
-        r:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )
-        r:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )
-        r:SetStateEnabled(Enum.HumanoidStateType.Running , true )
-        r:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )
-        r.JumpPower = math.max ( 50 , r.JumpPower )
-        r.JumpHeight = math.max ( 7.2 , r.JumpHeight )
-        r.AutoRotate = true
+        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
         if r.PlatformStand then
             r.PlatformStand = false
         end
         if r.Sit then
             r.Sit = false
         end
+        r.JumpPower = math.max(50, r.JumpPower)
+        r.JumpHeight = math.max(7.2, r.JumpHeight)
     end
-    for _,item in ipairs(e:GetDescendants())do
-        if item:IsA( "LocalScript" )and((string.find (string.lower (item.Name ), "ragdoll" )or string.find (string.lower (item.Name ), "fall" )))then
+    for _, item in ipairs(e:GetDescendants()) do
+        if item:IsA("LocalScript") and (string.find(string.lower(item.Name), "ragdoll") or string.find(string.lower(item.Name), "fall")) then
             item.Disabled = true
         end
     end
@@ -1002,7 +883,7 @@ z4=function(e,...)
         end
     end
     )e.ChildAdded :Connect(function(e,...)
-        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard and not h.isReturning )then
+        if e:IsA( "Tool" ) and m(e) and (((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
             task.defer (function(...) u4()
             end
             )
@@ -1258,22 +1139,10 @@ end
 )D4=function(...) h.onTreadmill = false h.teleporting = false h.glidingToTarget = false h.securingEgg = false h.isReturning = false h.delivering = false h.holdingEggForGuard = false h.currentTargetModel =nil h.targetPosition =nil h.stateTime =os.clock ()
     local e=o.Character
     local r=e and e:FindFirstChild( "HumanoidRootPart" )
-    local hum=e and e:FindFirstChildOfClass( "Humanoid" )
     if r then
         pcall(function(...) r.Anchored = false r.AssemblyLinearVelocity =Vector3.zero r.AssemblyAngularVelocity =Vector3.zero
         end
         )
-    end
-    if hum then
-        pcall(function(...)
-            hum.AutoRotate = true
-            hum.PlatformStand = false
-            hum.Sit = false
-            hum.WalkSpeed = math.max(16, hum.WalkSpeed)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-            hum:ChangeState(Enum.HumanoidStateType.Running)
-        end)
     end
     pcall(function(...)
         if C4 then
@@ -1293,31 +1162,49 @@ end
     )
 end
 d4=function(e,y,...)
+    local char = o.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     if e then
-        for e,r in ipairs(e:GetDescendants())do
-            if r:IsA( "ProximityPrompt" )then
-                pcall(function(...) r.RequiresLineOfSight = false r.HoldDuration = 0
-                    if typeof(fireproximityprompt)== "function" then
-                        fireproximityprompt(r, 0 )fireproximityprompt(r)
+        for _, r in ipairs(e:GetDescendants()) do
+            if r:IsA("ProximityPrompt") then
+                pcall(function()
+                    r.RequiresLineOfSight = false
+                    r.HoldDuration = 0
+                    if typeof(fireproximityprompt) == "function" then
+                        fireproximityprompt(r, 0)
+                        fireproximityprompt(r)
                     end
-                end
-                )
+                end)
+            elseif r:IsA("BasePart") and root and typeof(firetouchinterest) == "function" then
+                pcall(function()
+                    firetouchinterest(root, r, 0)
+                    task.wait(0.01)
+                    firetouchinterest(root, r, 1)
+                end)
             end
         end
     end
-    local u=r:FindFirstChild( "AreaEggSlotsClient" )
+    local u = r:FindFirstChild("AreaEggSlotsClient")
     if u and y then
-        for e,r in ipairs(u:GetChildren())do
-            local u=r:FindFirstChildWhichIsA( "BasePart" )or r.PrimaryPart
-            if u and((u.Position -y)).Magnitude <= 18 then
-                for e,r in ipairs(r:GetDescendants())do
-                    if r:IsA( "ProximityPrompt" )then
-                        pcall(function(...) r.RequiresLineOfSight = false r.HoldDuration = 0
-                            if typeof(fireproximityprompt)== "function" then
-                                fireproximityprompt(r, 0 )fireproximityprompt(r)
+        for _, slot in ipairs(u:GetChildren()) do
+            local p = slot:FindFirstChildWhichIsA("BasePart") or slot.PrimaryPart
+            if p and (p.Position - y).Magnitude <= 22 then
+                for _, prompt in ipairs(slot:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        pcall(function()
+                            prompt.RequiresLineOfSight = false
+                            prompt.HoldDuration = 0
+                            if typeof(fireproximityprompt) == "function" then
+                                fireproximityprompt(prompt, 0)
+                                fireproximityprompt(prompt)
                             end
-                        end
-                        )
+                        end)
+                    elseif prompt:IsA("BasePart") and root and typeof(firetouchinterest) == "function" then
+                        pcall(function()
+                            firetouchinterest(root, prompt, 0)
+                            task.wait(0.01)
+                            firetouchinterest(root, prompt, 1)
+                        end)
                     end
                 end
             end
@@ -1329,23 +1216,19 @@ b4=function(e,...) h.godmode =e
     if not r then
         return
     end
-    protectHumanoid(r)
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
-        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
-        if e and y.Health < 100 and y.Health > 0 then
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead, not e)
+        if e and y.Health < 100 then
             y.Health = 100
         end
     end
-    for _,part in ipairs(r:GetDescendants())do
-        if part:IsA( "BasePart" )then
-            part.CanTouch = true
-            if e and (h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg) then
+    for _, part in ipairs(r:GetChildren()) do
+        if part:IsA("BasePart") then
+            if part.Name == "HumanoidRootPart" then
                 part.CanCollide = false
-            else
-                if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
-                    part.CanCollide = true
-                end
+            elseif part.Name:find("Leg") or part.Name:find("Foot") or part.Name:find("Torso") then
+                part.CanCollide = true
             end
         end
     end
@@ -1357,6 +1240,7 @@ end
 local function disableDesyncGodmode()
     b4(false)
 end
+
 A4=function(...)
     local e=o.Character
     local y=e and e:FindFirstChildOfClass( "Humanoid" )
@@ -1365,27 +1249,22 @@ A4=function(...)
     end
     pcall(function(...)
         y.BreakJointsOnDeath = false
-        y:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )
-        y:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )
-        y:SetStateEnabled(Enum.HumanoidStateType.Running , true )
-        y:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )
-        y:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )
-        y:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )
-        y:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )
-        y.JumpPower = math.max ( 50 , y.JumpPower )
-        y.JumpHeight = math.max ( 7.2 , y.JumpHeight )
-        y.AutoRotate = true
+        y:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        y:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        y:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
         y.PlatformStand = false
         y.Sit = false
-        if y.Health > 0 and y.Health < 100 then
-            y.Health = 100
-        end
-        y:ChangeState(Enum.HumanoidStateType.Running )
-    end
-    )
+        y.JumpPower = math.max(50, y.JumpPower)
+        y.JumpHeight = math.max(7.2, y.JumpHeight)
+        y:ChangeState(Enum.HumanoidStateType.Running)
+    end)
     h.swapped = true
     if h.godmode then
-        b4( true )
+        b4(true)
     end
     z4(e)
     return true
@@ -1756,16 +1635,10 @@ g4=function(e,r,u,...)
     if k then
         k.AutoRotate = false
     end
-    local a=s4()
-    e=math.max ( 100 ,e or h.glideSpeed or 600 )
-    local V=h.laneZ or L 
-    h.isReturning = true 
-    h.stateTime =os.clock ()
-    V4(a, 20 )
-    j.AssemblyLinearVelocity =Vector3.zero 
-    j.AssemblyAngularVelocity =Vector3.zero
-    local H_limit=o4()
-    local t=math.max (e,H_limit)
+    local a=s4()e=math.max ( 100 ,e or h.glideSpeed or 600 )
+    local V=h.laneZ or L h.isReturning = true h.stateTime =os.clock ()V4(a, 20 )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
+    local H=o4()
+    local t=math.max (e,H)
     local s=os.clock ()+ 25
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
@@ -1782,90 +1655,62 @@ g4=function(e,r,u,...)
             h.isReturning = false
             return false
         end
-        local pos=j.Position
-        local w_dist=((a-pos)).Magnitude
-        if(pos.X <=(a.X + 3 )and math.abs (pos.Z -a.Z )<= 8 )or w_dist<= 6 then
+        local e=j.Position
+        local w=((a-e)).Magnitude
+        if(e.X <=(a.X + 3 )and math.abs (e.Z -a.Z )<= 8 )or w<= 6 then
             break
         end
-        local dt=y.Heartbeat :Wait()
-        pos=j.Position
-        local curH=t
-        if pos.X <=b and pos.X >E then
-            local r_factor=math.clamp (((pos.X -E))/((b-E)), 0 , 1 )
-            curH=A+(((t-A))*r_factor)
-        elseif pos.X <=E then
-            curH=math.min(130, A)
+        local o=y.Heartbeat :Wait()e=j.Position
+        local H=t
+        if e.X <=b and e.X >E then
+            local r=math.clamp (((e.X -E))/((b-E)), 0 , 1 )H=A+(((t-A))*r)
+        elseif e.X <=E then
+            H=A
         end
-        local targetZ=a.Z
-        if pos.X > 540 then
-            targetZ=V
+        local s=a.Z
+        if e.X > 540 then
+            s=V
         end
-        local dirX=math.sign (a.X -pos.X )
-        local stepX=dirX*math.min (math.abs (a.X -pos.X ),curH*dt)
-        local nextX=pos.X +stepX
-        local dirY=math.sign (a.Y -pos.Y )
-        local stepY=dirY*math.min (math.abs (a.Y -pos.Y ),(curH*dt)* 0.5 )
-        local nextY=pos.Y +stepY
-        local diffZ=targetZ-pos.Z
-        local stepZ=math.sign (diffZ)*math.min (math.abs (diffZ),curH*dt)
-        local nextZ=pos.Z +stepZ
-        local debris=i4()
-        local isDodging= false
-        if pos.X >E then
-            for _,deb in ipairs(debris)do
-                local debPos=deb.Position
-                local d_mag=((Vector3.new (nextX,nextY,nextZ)-debPos)).Magnitude
-                local dx=math.abs (nextX-debPos.X )
-                local dz=math.abs (nextZ-debPos.Z )
-                if d_mag< 22 or(dx< 18 and dz< 14 )then
-                    isDodging= true
-                    local safeY=debPos.Y + 16
-                    if nextY<safeY then
-                        nextY=math.min (nextY+((curH*dt)* 1.5 ),safeY)
+        local B=math.sign (a.X -e.X )
+        local J=B*math.min (math.abs (a.X -e.X ),H*o)
+        local K=e.X +J
+        local c=math.sign (a.Y -e.Y )
+        local v=c*math.min (math.abs (a.Y -e.Y ),(H*o)* 0.5 )
+        local i=e.Y +v
+        local R=s-e.Z
+        local g=math.sign (R)*math.min (math.abs (R),H*o)
+        local Q=e.Z +g
+        local P=i4()
+        local N= false
+        if e.X >E then
+            for e,r in ipairs(P)do
+                local y=r.Position
+                local u=((Vector3.new (K,i,Q)-y)).Magnitude
+                local w=math.abs (K-y.X )
+                local j=math.abs (Q-y.Z )
+                if u< 22 or(w< 18 and j< 14 )then
+                    N= true
+                    local e=y.Y + 16
+                    if i<e then
+                        i=math.min (i+((H*o)* 1.5 ),e)
                     end
                     break
                 end
             end
         end
-        local nextPos=Vector3.new (nextX,nextY,nextZ)
-        local faceDir=((nextPos-pos)).Magnitude > 0.05 and((nextPos-pos)).Unit or j.CFrame.LookVector 
-        local nextCf = CFrame.lookAt (nextPos,nextPos+faceDir)
-        j.CFrame = nextCf
-        j.AssemblyLinearVelocity =Vector3.zero 
-        j.AssemblyAngularVelocity =Vector3.zero
-        firePivot(nextCf)
-        if k and k.Health < 100 and k.Health > 0 then
-            k.Health = 100
-        end
-        if isDodging then
-            h.statusText =string.format ( "Bay về vườn (Z: %.0f) [NÉ BẪY!]" ,nextZ)
+        local U=Vector3.new (K,i,Q)
+        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or j.CFrame.LookVector j.CFrame =CFrame.lookAt (U,U+l)j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
+        if N then
+            h.statusText =string.format ( "Tweening Home (Z: %.0f) [DODGING TRAP!]" ,Q)
         else
-            h.statusText =string.format ( "Đang bay về khu vườn (%.0f studs | Tốc độ: %.0f)" ,w_dist,curH)
+            h.statusText =string.format ( "Tweening Home (%.0f studs | Z: %.0f | Spd: %.0f)" ,w,Q,H)
         end
     end
-    local retCf = CFrame.new (a)
-    j.CFrame = retCf
-    j.AssemblyLinearVelocity =Vector3.zero 
-    j.AssemblyAngularVelocity =Vector3.zero
-    firePivot(retCf)
+    j.CFrame =CFrame.new (a)j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
     if k then
         k.AutoRotate = true
     end
-    h.isReturning = false 
-    h.delivering = false 
-    h.statusText = "[Đã về vườn] Đang đặt trứng lên kệ..."
-    H("[AutoSteal] Arrived at Base PetArea! Depositing egg...")
-    task.wait(0.1)
-    local placeLimit = os.clock() + 3
-    while y4() > 0 and os.clock() < placeLimit and h.alive do
-        B4()
-        task.wait(0.06)
-    end
-    if h.autoHatch then
-        J4(true)
-    end
-    u4()
-    h.statusText = string.format("Đã về vườn an toàn (Còn %d trứng). Sẵn sàng lượt mới!", y4())
+    u4()h.isReturning = false h.delivering = false h.statusText = "Arrived at Base PetArea!"
     return true
 end
 v4=function(e,r,y,...)
@@ -1941,182 +1786,125 @@ c4=function(e,...)
     end
     return false
 end
-local function wk(e, r, u, w, ...)
-    local j = o.Character
-    local k = j and j:FindFirstChild("HumanoidRootPart")
-    local a = j and j:FindFirstChildOfClass("Humanoid")
+local function wk(e,r,u,w,...)
+    local j=o.Character
+    local k=j and j:FindFirstChild( "HumanoidRootPart" )
+    local a=j and j:FindFirstChildOfClass( "Humanoid" )
     if not k then
         return false
     end
     if a then
         a.AutoRotate = false
     end
-    protectHumanoid(j)
-    r = math.max(60, r or h.glideSpeed or 350)
-    local V = e.Position
-    V4(V, 14)
-    pcall(function(...) o:RequestStreamAroundAsync(V) end)
-    k.AssemblyLinearVelocity = Vector3.zero
-    k.AssemblyAngularVelocity = Vector3.zero
-    local H = h.laneZ or L
-    h.glidingToTarget = true
-    h.stateTime = os.clock()
-    local t = 0
-    local s = os.clock() + 18
-    while h.alive and (h.glidingToTarget and os.clock() < s) do
-        if w and O4 ~= w then
-            if a then a.AutoRotate = true end
+    r=math.max ( 60 ,r or h.glideSpeed or 350 )
+    local V=e.Position V4(V, 14 )pcall(function(...) o:RequestStreamAroundAsync(V)
+    end
+    )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
+    local H=h.laneZ or L h.glidingToTarget = true h.stateTime =os.clock ()
+    local t= 0
+    local s=os.clock ()+ 15
+    while h.alive and(h.glidingToTarget and os.clock ()<s)do
+        if w and O4~=w then
+            if a then
+                a.AutoRotate = true
+            end
             h.glidingToTarget = false
             return false
         end
-        if not h.pureTweenFarm and (not h.autoFarmLoop and not h.teleporting) then
-            if a then a.AutoRotate = true end
+        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+            if a then
+                a.AutoRotate = true
+            end
             h.glidingToTarget = false
             return false
         end
-        local curPos = k.Position
-        local distTotal = ((V - curPos)).Magnitude
-        local distHoriz = ((Vector2.new(curPos.X, curPos.Z) - Vector2.new(V.X, V.Z))).Magnitude
-        local distY = math.abs(curPos.Y - V.Y)
-        if distTotal <= 6 or (distHoriz <= 3.5 and distY <= 6) then
+        local e=k.Position
+        local j=((V-e)).Magnitude
+        local o=((Vector2.new (e.X ,e.Z )-Vector2.new (V.X ,V.Z ))).Magnitude
+        local s=math.abs (e.Y -V.Y )
+        if j<= 6 or(o<= 3.5 and s<= 6 )then
             break
         end
-
-        local dt = y.Heartbeat:Wait()
-        curPos = k.Position
-        distTotal = ((V - curPos)).Magnitude
-        distHoriz = ((Vector2.new(curPos.X, curPos.Z) - Vector2.new(V.X, V.Z))).Magnitude
-        local distX = math.abs(curPos.X - V.X)
-
-        if u and (os.clock() - t > 0.4) then
-            t = os.clock()
-            local okTarget, resState = k4(u)
-            if not okTarget and resState == "CarriedByOther" then
-                if a then a.AutoRotate = true end
+        local B=y.Heartbeat :Wait()e=k.Position j=((V-e)).Magnitude o=((Vector2.new (e.X ,e.Z )-Vector2.new (V.X ,V.Z ))).Magnitude
+        local J=math.abs (e.X -V.X )
+        if u and(os.clock ()-t> 0.5 )then
+            t=os.clock ()
+            local e,r=k4(u)
+            if not e and r== "CarriedByOther" then
+                if a then
+                    a.AutoRotate = true
+                end
                 h.glidingToTarget = false
                 return false
             end
         end
-
-        -- Smooth speed ramp near base entrance (E = 525, b = 620)
-        local curSpeed = r
-        if curPos.X <= E then
-            curSpeed = math.min(140, r)
-        elseif curPos.X <= b then
-            local factor = math.clamp((curPos.X - E) / (b - E), 0, 1)
-            curSpeed = 140 + ((r - 140) * factor)
+        local K=V.Z
+        if J> 40 then
+            K=H
         end
-
-        -- Corridor Z: stay along center lane Z = -360 while travelling across zones
-        local targetZ = V.Z
-        if distX > 40 then
-            targetZ = H
-        end
-
-        -- CRUCIAL ELEVATION CONTROL:
-        -- Stay at high safe corridor altitude (Y >= 70) until close to the egg!
-        -- Prevents plowing into base fences, terrain slopes, guards, and map killbricks!
-        local targetY = V.Y
-        if distX > 40 or distHoriz > 30 then
-            targetY = math.max(70, V.Y + 25)
-        end
-
-        local dirX = math.sign(V.X - curPos.X)
-        local stepX = dirX * math.min(math.abs(V.X - curPos.X), curSpeed * dt)
-        local nextX = curPos.X + stepX
-
-        local dirY = math.sign(targetY - curPos.Y)
-        local ySpeedFactor = (distHoriz <= 25) and 1.2 or 0.7
-        local stepY = dirY * math.min(math.abs(targetY - curPos.Y), curSpeed * dt * ySpeedFactor)
-        local nextY = curPos.Y + stepY
-
-        local diffZ = targetZ - curPos.Z
-        local stepZ = math.sign(diffZ) * math.min(math.abs(diffZ), curSpeed * dt)
-        local nextZ = curPos.Z + stepZ
-
-        -- Obstacle / Trap dodge
-        local isDodging = false
-        if distHoriz > 25 then
-            local debris = i4()
-            for _, deb in ipairs(debris) do
-                local debPos = deb.Position
-                local dMag = ((Vector3.new(nextX, nextY, nextZ) - debPos)).Magnitude
-                local dx = math.abs(nextX - debPos.X)
-                local dz = math.abs(nextZ - debPos.Z)
-                if dMag < 22 or (dx < 18 and dz < 14) then
-                    isDodging = true
-                    local safeY = debPos.Y + 16
-                    if nextY < safeY then
-                        nextY = math.min(nextY + (curSpeed * dt * 1.5), safeY)
+        local c=math.sign (V.X -e.X )
+        local v=c*math.min (math.abs (V.X -e.X ),r*B)
+        local i=e.X +v
+        local R=(o<= 25 )and 1.2 or 0.5
+        local g=math.sign (V.Y -e.Y )
+        local Q=g*math.min (math.abs (V.Y -e.Y ),(r*B)*R)
+        local P=e.Y +Q
+        local N=K-e.Z
+        local U=math.sign (N)*math.min (math.abs (N),r*B)
+        local l=e.Z +U
+        local D= false
+        if o> 25 then
+            local e=i4()
+            for e,y in ipairs(e)do
+                local u=y.Position
+                local w=((Vector3.new (i,P,l)-u)).Magnitude
+                local j=math.abs (i-u.X )
+                local k=math.abs (l-u.Z )
+                if w< 22 or(j< 18 and k< 14 )then
+                    D= true
+                    local e=u.Y + 16
+                    if P<e then
+                        P=math.min (P+((r*B)* 1.5 ),e)
                     end
                     break
                 end
             end
         end
-
-        local nextPos = Vector3.new(nextX, nextY, nextZ)
-        local faceDir = ((nextPos - curPos)).Magnitude > 0.05 and ((nextPos - curPos)).Unit or k.CFrame.LookVector
-        local nextCf = CFrame.lookAt(nextPos, nextPos + faceDir)
-        k.CFrame = nextCf
-        k.AssemblyLinearVelocity = Vector3.zero
-        k.AssemblyAngularVelocity = Vector3.zero
-        firePivot(nextCf)
-
-        if a then
-            if a.Health < 100 and a.Health > 0 then
-                a.Health = 100
-            end
-            if a:GetState() == Enum.HumanoidStateType.Dead or a:GetState() == Enum.HumanoidStateType.Ragdoll then
-                a:ChangeState(Enum.HumanoidStateType.Running)
-            end
-        end
-
-        if isDodging then
-            h.statusText = string.format("Bay tới trứng (Z: %.0f) [NÉ BẪY!]", nextZ)
+        local C=Vector3.new (i,P,l)
+        local q=((C-e)).Magnitude > 0.05 and((C-e)).Unit or k.CFrame.LookVector k.CFrame =CFrame.lookAt (C,C+q)k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
+        if D then
+            h.statusText =string.format ( "Gliding Out (Z: %.0f) [DODGING TRAP!]" ,l)
         else
-            h.statusText = string.format("Đang bay tới trứng (%.0f studs | Tốc độ: %.0f)", distTotal, curSpeed)
+            h.statusText =string.format ( "Gliding -> Egg (%.0f studs | H: %.0f)" ,j,o)
         end
     end
-
-    local finalCf = e * CFrame.new(0, 0.4, 0)
-    k.CFrame = finalCf
-    k.AssemblyLinearVelocity = Vector3.zero
-    k.AssemblyAngularVelocity = Vector3.zero
-    firePivot(finalCf)
-
+    k.CFrame =e*CFrame.new ( 0 , 0.4 , 0 )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
     if a then
         a.AutoRotate = true
-        if a.Health < 100 and a.Health > 0 then
-            a.Health = 100
-        end
     end
     h.glidingToTarget = false
     return true
 end
-
-R4 = function(e, r, y_uid, u, ...)
-    local w = o.Character
-    local j = w and w:FindFirstChild("HumanoidRootPart")
+R4=function(e,r,y,u,...)
+    local w=o.Character
+    local j=w and w:FindFirstChild( "HumanoidRootPart" )
     if j then
-        local curX = j.Position.X
-        local targetX = e.Position.X
-        if curX <= 535 and targetX > 510 then
-            h.statusText = "[AutoSteal] Rời căn cứ an toàn qua hành lang..."
-            local wp1 = CFrame.new(500, 70, -360)
-            local wp2 = CFrame.new(535, 70, -360)
-            local wp3 = CFrame.new(560, 70, -360)
-            if (j.Position - wp1.Position).Magnitude > 8 then
-                local ok1 = wk(wp1, math.min(r or 350, 140), y_uid, u)
-                if not ok1 then return false end
+        local w=j.Position.X
+        local a=e.Position.X
+        if w<= 535 and a> 510 then
+            local e=CFrame.new ( 500 , 70 , -364 )
+            local a=((j.Position -e.Position )).Magnitude
+            if a> 5 then
+                h.statusText = "[AutoSteal] Exiting Base -> Waypoint (500, 70, -364)..." H(string.format ( "[AutoSteal] Leaving base (X=%.1f): Gliding to waypoint (500, 70, -364) first (dist=%.1f studs)..." ,w,a))
+                local j=wk(e,r,y,u)
+                if not j then
+                    return false
+                end
+                task.wait ( 0.04 )
             end
-            local ok2 = wk(wp2, math.min(r or 350, 140), y_uid, u)
-            if not ok2 then return false end
-            local ok3 = wk(wp3, math.min(r or 350, 180), y_uid, u)
-            if not ok3 then return false end
-            task.wait(0.02)
         end
     end
-    return wk(e, r, y_uid, u)
+    return wk(e,r,y,u)
 end
 Q4=function(e,r,...)
     local u=o.Character
@@ -2197,26 +1985,14 @@ Q4=function(e,r,...)
             end
         end
         local U=Vector3.new (K,i,Q)
-        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or w.CFrame.LookVector 
-        local nextQCf = CFrame.lookAt (U,U+l)
-        w.CFrame = nextQCf
-        w.AssemblyLinearVelocity =Vector3.zero 
-        w.AssemblyAngularVelocity =Vector3.zero
-        firePivot(nextQCf)
-        if j and j.Health < 100 and j.Health > 0 then
-            j.Health = 100
-        end
+        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or w.CFrame.LookVector w.CFrame =CFrame.lookAt (U,U+l)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
         if N then
             h.statusText =string.format ( "Tweening Safe Line (Z: %.0f) [DODGING!]" ,Q)
         else
             h.statusText =string.format ( "Tweening to Safe Line (%.0f studs | X: %.0f)" ,o,e.X )
         end
     end
-    local finalQCf = CFrame.new (E,math.max ( 68 ,w.Position.Y ),k)
-    w.CFrame = finalQCf
-    w.AssemblyLinearVelocity =Vector3.zero 
-    w.AssemblyAngularVelocity =Vector3.zero
-    firePivot(finalQCf)
+    w.CFrame =CFrame.new (E,math.max ( 68 ,w.Position.Y ),k)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     if j then
         j.AutoRotate = true
     end
@@ -3378,7 +3154,11 @@ N4=function(...)
         local function a(e,...)
             local r=e.RarityTier or 0
             local y=e.ZoneWeight or 50
-            return (r * 1000000) + y
+            if r>= 4 then
+                return( 400000 +(r* 10000 ))+y
+            else
+                return(y* 11 )+(r* 1000 )
+            end
         end
         table.sort (u,function(e,r,...)
             local y=a(e)
@@ -3426,103 +3206,248 @@ N4=function(...)
     end
     return V
 end
+
+-- ==========================================
+-- ANTI TRAP & HAZARD ENGINE (SAFE & PRECISE)
+-- ==========================================
+local function disableSingleTrap(obj)
+    if not obj then return end
+    pcall(function()
+        local nm = obj.Name:lower()
+        -- NEVER touch eggs, pets, tools, dropped loot, cards or stands!
+        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("drop") or nm:find("item") then
+            return
+        end
+        if obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj:GetAttribute("Category") or obj:GetAttribute("ItemType") or obj:IsA("Tool") then
+            return
+        end
+
+        local isTrap = nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill") and not nm:find("trail")) or nm:find("mine")
+        if isTrap and obj:IsA("BasePart") then
+            obj.CanTouch = false
+            obj.CanCollide = false
+            obj.CanQuery = false
+        end
+        for _, desc in ipairs(obj:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                local subNm = desc.Name:lower()
+                if subNm:find("hitbox") or subNm:find("trap") or subNm:find("mine") or subNm:find("spike") or subNm:find("hazard") then
+                    if not (subNm:find("egg") or subNm:find("slot") or subNm:find("pad") or subNm:find("treadmill") or subNm:find("item") or subNm:find("tool")) then
+                        desc.CanTouch = false
+                        desc.CanCollide = false
+                        desc.CanQuery = false
+                    end
+                end
+            elseif desc:IsA("TouchTransmitter") and isTrap then
+                pcall(function() desc:Destroy() end)
+            end
+        end
+    end)
+end
+
+local function scanAndNeutralizeTraps()
+    if not (h and h.antiTrap) then return end
+    local debris = r:FindFirstChild("__DEBRIS")
+    if debris then
+        for _, child in ipairs(debris:GetChildren()) do
+            local nm = child.Name:lower()
+            -- Only target actual traps, NEVER eggs or tools
+            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill")) then
+                disableSingleTrap(child)
+            end
+        end
+    end
+    for _, folderName in ipairs({"Traps", "PlayerTraps", "MapTraps"}) do
+        local f = r:FindFirstChild(folderName)
+        if f then
+            for _, child in ipairs(f:GetChildren()) do
+                local nm = child.Name:lower()
+                if nm:find("trap") or nm:find("mine") or nm:find("spike") or nm:find("hazard") then
+                    disableSingleTrap(child)
+                end
+            end
+        end
+    end
+end
+
+pcall(function()
+    r.DescendantAdded:Connect(function(desc)
+        if not (h and h.antiTrap) then return end
+        pcall(function()
+            local nm = desc.Name:lower()
+            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill") and not nm:find("trail")) then
+                if not (nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("item") or nm:find("card")) then
+                    disableSingleTrap(desc)
+                end
+            end
+        end)
+    end)
+end)
+
+task.spawn(function()
+    while h and h.alive do
+        if h.antiTrap then
+            pcall(scanAndNeutralizeTraps)
+        end
+        task.wait(1.5)
+    end
+end)
+
 U4=function(e,u,w,j,...)
-local k=o.Character
-local a=k and k:FindFirstChild( "HumanoidRootPart" )
-local V=k and k:FindFirstChildOfClass( "Humanoid" )
-if not a or not V then
-return false
-end
-h.securingEgg = true
-h.isReturning = false
-h.stateTime =os.clock ()
-h.holdingEggForGuard = true
-local s=u.Position
-V4(s, 14 )
-h.currentTargetModel =w
-h.targetPosition =s
-a.AssemblyLinearVelocity =Vector3.zero
-a.AssemblyAngularVelocity =Vector3.zero
-Z4(k)
-pcall(function(...) o:RequestStreamAroundAsync(s) end)
-if not w and r:FindFirstChild( "AreaEggSlotsClient" )then
-for _,slot in ipairs(r.AreaEggSlotsClient :GetChildren())do
-local part=slot:FindFirstChildWhichIsA( "BasePart" )or slot.PrimaryPart
-if part and((part.Position -s)).Magnitude <= 16 then
-w=slot
-h.currentTargetModel =slot
-break
-end
-end
-end
-if w then
-pcall(function(...)
-for _,part in ipairs(w:GetDescendants())do
-if part:IsA( "BasePart" )and(part.Transparency > 0.8 and(part.Name ~= "Hitbox" and(part.Name ~= "Root" and not part.Name :find( "Pad" ))))then
-part.Transparency = 0
-end
-end
-end)
-end
-h.statusText = "Đang nhặt trứng..."
-H(string.format( "[AutoSteal] Nhặt trứng %s..." ,tostring(e)))
-local startCount = y4()
-local p=os.clock ()+ 1.8
-local B= 0
-while not (w4() or j4(e) or (y4() > startCount)) and (os.clock ()<p and(h.alive and h.securingEgg ))do
-if j and O4~=j then
-t( "[AutoSteal] Cancelled by session switch in pickup" )
-break
-end
-if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
-break
-end
-if e and(os.clock ()-B> 0.3 )then
-B=os.clock ()
-local r,y=k4(e)
-if not r and y== "CarriedByOther" then
-t(string.format ( "[AutoSteal] Target egg %s was snatched by another player!" ,tostring(e)))
-break
-end
-end
-local pickupCf = u * CFrame.new(0, 0.4, 0)
-k:PivotTo(pickupCf)
-firePivot(pickupCf)
-d4(w,s)
-if e and i then
-task.spawn (function(...)
-pcall(function(...)
-if i:IsA( "RemoteFunction" )then
-i:InvokeServer({[ "Uid" ]=e})
-i:InvokeServer(e)
-else
-i:FireServer({[ "Uid" ]=e})
-i:FireServer(e)
-end
-end)
-end)
-end
-y.Heartbeat:Wait()
-end
-local secured = w4() or j4(e) or (y4() > startCount)
-if not secured then
-t( "[AutoSteal] Initial egg pickup timed out or stolen" )
-if e then
-X4[e]=os.clock ()+ 2
-end
-h.currentTargetModel =nil
-h.targetPosition =nil
-h.securingEgg = false
-h.holdingEggForGuard = false
-return false
-end
-h.currentTargetModel =nil
-h.targetPosition =nil
-h.securingEgg = false
-h.holdingEggForGuard = false
-h.statusText = "Đã lấy trứng! Đang bay thẳng về khu vườn..."
-H( "[AutoSteal] Egg secured immediately! Holding egg and returning..." )
-return true
+    local k=o.Character
+    local a=k and k:FindFirstChild( "HumanoidRootPart" )
+    local V=k and k:FindFirstChildOfClass( "Humanoid" )
+    if not a or not V then
+        return false
+    end
+    h.securingEgg = true h.isReturning = false h.stateTime =os.clock ()h.holdingEggForGuard = true
+    local s=u.Position V4(s, 14 )h.currentTargetModel =w h.targetPosition =s a.AssemblyLinearVelocity =Vector3.zero a.AssemblyAngularVelocity =Vector3.zero Z4(k)pcall(function(...) o:RequestStreamAroundAsync(s)
+    end
+    )
+    if not w and r:FindFirstChild( "AreaEggSlotsClient" )then
+        for e,r in ipairs(r.AreaEggSlotsClient :GetChildren())do
+            local y=r:FindFirstChildWhichIsA( "BasePart" )or r.PrimaryPart
+            if y and((y.Position -s)).Magnitude <= 16 then
+                w=r h.currentTargetModel =r
+                break
+            end
+        end
+    end
+    if w then
+        pcall(function(...)
+            for r,y in ipairs(w:GetDescendants())do
+                if y:IsA( "BasePart" )and(y.Transparency > 0.8 and(y.Name ~= "Hitbox" and(y.Name ~= "Root" and not y.Name :find( "Pad" ))))then
+                    y.Transparency = 0
+                end
+            end
+        end
+        )
+    end
+    h.statusText = "[1/4] Nâng trứng mục tiêu..." H(string.format ( "[GuardStrike] Step 1: Lifting target egg (%s)..." ,tostring(e)))
+    local p=os.clock ()+ 1.5
+    local B= 0
+    while not w4()and(os.clock ()<p and(h.alive and h.securingEgg ))do
+        if j and O4~=j then
+            t( "[GuardStrike] Cancelled by session switch in Step 1" )
+            break
+        end
+        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+            break
+        end
+        if e and(os.clock ()-B> 0.25 )then
+            B=os.clock ()
+            local r,y=k4(e)
+            if not r and y== "CarriedByOther" then
+                t(string.format ( "[GuardStrike] Target egg %s was snatched by another player! Aborting pickup..." ,tostring(e)))
+                break
+            end
+        end
+        k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))d4(w,s)
+        if e and i then
+            task.spawn (function(...) pcall(function(...)
+                    if i:IsA( "RemoteFunction" )then
+                        i:InvokeServer({[ "Uid" ]=e})i:InvokeServer(e)
+                    else
+                        i:FireServer({[ "Uid" ]=e})i:FireServer(e)
+                    end
+                end
+                )
+            end
+            )
+        end
+        y.Heartbeat :Wait()
+    end
+
+    if not w4() then
+        if j4(e) then
+            pcall(u4)
+            h.currentTargetModel = nil h.targetPosition = nil h.securingEgg = false h.holdingEggForGuard = false
+            return true
+        end
+        t( "[GuardStrike] Initial egg pickup timed out or egg was stolen" )
+        if e then
+            X4[e]=os.clock ()+ 2
+        end
+        h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
+        return false
+    end
+
+    if P then
+        task.spawn(function()
+            pcall(function()
+                if P:IsA("RemoteFunction") then
+                    P:InvokeServer()
+                else
+                    P:FireServer()
+                end
+            end)
+        end)
+    end
+
+    h.statusText = "[2/4] Kích hoạt bảo vệ đòn đánh..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
+    local J=os.clock ()
+    local K=J+ 0.55
+    while w4()and(os.clock ()<K and(h.alive and h.securingEgg ))do
+        if j and O4~=j then
+            t( "[GuardStrike] Cancelled by session switch in Step 2" )
+            break
+        end
+        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+            break
+        end
+        k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))V4(s, 14 )
+        y.Heartbeat :Wait()
+    end
+
+    if not w4() then
+        h.statusText = "[3/4] Nhặt lại trứng nhanh..." H( "[GuardStrike] Step 3: Guard struck! Re-grabbing egg..." )
+        local v=os.clock ()+ 0.8
+        while not w4()and(os.clock ()<v and(h.alive and h.securingEgg ))do
+            if j and O4~=j then
+                t( "[GuardStrike] Cancelled by session switch in Step 3" )
+                break
+            end
+            if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+                break
+            end
+            k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))d4(w,s)
+            if e and i then
+                task.spawn (function(...) pcall(function(...)
+                        if i:IsA( "RemoteFunction" )then
+                            i:InvokeServer({[ "Uid" ]=e})i:InvokeServer(e)
+                        else
+                            i:FireServer({[ "Uid" ]=e})i:FireServer(e)
+                        end
+                    end
+                    )
+                end
+                )
+            end
+            y.Heartbeat :Wait()
+        end
+    end
+
+    local R=j4(e) or w4()
+    if not R then
+        task.wait ( 0.04 )
+        R=j4(e) or w4()
+    end
+    h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
+    if j and O4~=j then
+        return false
+    end
+    if R then
+        pcall(u4)
+        H( "[GuardStrike] Egg successfully secured after guard strike! Stashed in backpack." )
+        h.statusText = "Đã cất trứng vào túi! Bay về vạch an toàn ngay..."
+    else
+        t( "[-] Failed to re-grab egg after guard strike (stolen or despawned)" )
+        h.statusText = "[-] Failed to re-grab egg"
+        if e then
+            X4[e]=os.clock ()+ 2
+        end
+    end
+    return R
 end
 l4=function(e,u,...)
     if h.teleporting or h.glidingToTarget or h.delivering or h.securingEgg then
@@ -3536,7 +3461,9 @@ l4=function(e,u,...)
         D4()
         return false
     end
-    pcall(u4)
+    if k then
+        k:UnequipTools()
+    end
     h.statusText = "[1/7] Pre-Flight Desync..."
     if not h.swapped then
         A4()
@@ -3808,23 +3735,14 @@ local Ck=os.clock ()task.spawn (function(...)
                                     return
                                 end
                                 if r then
+                                    pcall(u4)
                                     if h.autoGlide then
-                                        h.statusText = "[AutoSteal] Đã lấy trứng! Đang bay thẳng về khu vườn..."
-                                        H( "[AutoSteal] Egg secured! Returning smoothly to Base along Z=-360..." )
-                                        g4(h.glideSpeed ,u, true)
+                                        h.statusText = "[AutoSteal] Secured! Tweening to Safe Line X=525..." H( "[AutoSteal] Egg secured after Guard Strike! Returning smoothly to Safe Line X=525 along Z=-360..." )Q4(h.glideSpeed ,u)pcall(u4)
+                                        local r=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next steal..." ,r)H(string.format ( "[AutoSteal] Egg stashed in bag (%d total eggs). Hands-Free ready for next steal..." ,r))
                                     else
-                                        h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" 
-                                        H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
+                                        h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
                                     end
-                                    h.isReturning = false 
-                                    h.delivering = false 
-                                    h.glidingToTarget = false 
-                                    h.securingEgg = false 
-                                    h.currentTargetModel =nil 
-                                    h.targetPosition =nil
-                                    local rem = y4()
-                                    h.statusText = string.format("Đã về vườn (Còn %d trứng). Chuẩn bị lượt mới...", rem)
-                                    task.wait(0.1)
+                                    pcall(u4)h.isReturning = false h.delivering = false h.glidingToTarget = false h.securingEgg = false h.currentTargetModel =nil h.targetPosition =nil
                                     if c4( "TWEEN" )then
                                         return
                                     end
@@ -3885,18 +3803,14 @@ local qk=os.clock ()task.spawn (function(...)
                                 return
                             end
                             if w then
+                                pcall(u4)
                                 if h.autoGlide then
-                                    h.statusText = "[SnipeLoop] Đã cướp trứng! Đang bay thẳng về khu vườn..."
-                                    g4(h.glideSpeed ,r, true)
+                                    h.statusText = "[SnipeLoop] Target secured! Tweening to Safe Line X=525..." Q4(h.glideSpeed ,r)pcall(u4)
+                                    local y=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next snipe..." ,y)H(string.format ( "[SnipeLoop] Egg stashed in bag (%d total eggs). Hands-Free ready for next snipe..." ,y))
                                 else
-                                    h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)"
-                                    H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
+                                    h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)" H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
                                 end
-                                h.isReturning = false 
-                                h.delivering = false
-                                local rem = y4()
-                                h.statusText = string.format("Đã về vườn (Còn %d trứng). Chuẩn bị lượt mới...", rem)
-                                task.wait(0.1)
+                                pcall(u4)h.isReturning = false h.delivering = false
                                 if c4( "WARP" )then
                                     return
                                 end
@@ -4126,25 +4040,68 @@ y.Heartbeat :Connect(function(...)
         if y.Sit and((h.pureTweenFarm or h.autoFarmLoop or h.isReturning or h.glidingToTarget ))then
             y.Sit = false y:ChangeState(Enum.HumanoidStateType.Running )
         end
+        if h and (h.enableWalkSpeed or h.antiCarrySlowdown) then
+            local targetSpeed = (h.enableWalkSpeed and h.walkSpeed) or 28
+            local safeBase = math.min(targetSpeed, 26)
+            if y.WalkSpeed < safeBase then
+                y.WalkSpeed = safeBase
+            end
+            -- Speed Bypass (TranslateBy): smooth movement without server rollback/rubberband!
+            if h.speedBypass and not (h.pureTweenFarm or h.autoFarmLoop or h.isReturning or h.glidingToTarget or h.teleporting) then
+                local extraSpeed = math.max(0, targetSpeed - 24)
+                if extraSpeed > 0 and y.MoveDirection.Magnitude > 0 then
+                    e:TranslateBy(y.MoveDirection * (extraSpeed * 0.016))
+                end
+            end
+        end
     end
+
+    -- Anti-Knockback (Anti bot đánh văng):
+    -- PRESERVES NORMAL JUMPING & FALLING! Only clamps extreme bot flings!
+    if h and h.antiKnockback and y and not (h.pureTweenFarm or h.autoFarmLoop or h.teleporting or h.glidingToTarget or h.isReturning or h.delivering) then
+        local vel = r.AssemblyLinearVelocity
+        local humState = y:GetState()
+        local isJumpingOrFalling = (humState == Enum.HumanoidStateType.Jumping or humState == Enum.HumanoidStateType.Freefall)
+
+        local maxAllowedY = isJumpingOrFalling and (y.JumpPower + 35) or 22
+        local minAllowedY = isJumpingOrFalling and -130 or -20
+
+        if math.abs(vel.X) > 42 or math.abs(vel.Z) > 42 or vel.Y > maxAllowedY or vel.Y < minAllowedY then
+            r.AssemblyLinearVelocity = Vector3.new(
+                math.clamp(vel.X, -26, 26),
+                math.clamp(vel.Y, minAllowedY, maxAllowedY),
+                math.clamp(vel.Z, -26, 26)
+            )
+            r.AssemblyAngularVelocity = Vector3.zero
+        end
+        for _, child in ipairs(e:GetChildren()) do
+            if child:IsA("BodyVelocity") or child:IsA("BodyForce") or child:IsA("BodyThrust") or child:IsA("LinearVelocity") or child:IsA("VectorForce") then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+
     local u=r.Position
     local w=w4()
     if u.Y < 45 then
         r.CFrame =CFrame.new (u.X , 72 ,u.Z )r.AssemblyLinearVelocity =Vector3.zero
         return
     end
+
+    -- Only unequip if tool is an EGG! Never unequip player items/weapons!
     if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
-        local r= false
-        for e,y in ipairs(e:GetChildren())do
-            if y:IsA( "Tool" )then
-                r= true
+        local hasEgg = false
+        for _, item in ipairs(e:GetChildren()) do
+            if item:IsA( "Tool" ) and m(item) then
+                hasEgg = true
                 break
             end
         end
-        if r then
+        if hasEgg then
             u4()
         end
     end
+
     if h.pureTweenFarm or h.autoFarmLoop or h.teleporting or h.glidingToTarget or h.delivering or h.securingEgg or h.isReturning then
         return
     end
@@ -4498,6 +4455,7 @@ local function wM(e,...)
     end
     eM(Fk.secSafety ,r.Character.SecSafety )eM(Fk.togGodmode ,r.Character.GodmodeTitle ,r.Character.GodmodeDesc )eM(Fk.btnUnstick ,r.Character.UnstickTitle ,r.Character.UnstickDesc )eM(Fk.secFlight ,r.Character.SecFlight )eM(Fk.sliderSpeed ,r.Character.SpeedTitle ,r.Character.SpeedDesc )eM(Fk.secDashboard ,r.Settings.SecDashboard )eM(Fk.paraLiveDash ,r.Settings.DashTitle )eM(Fk.secBlacklist ,r.Settings.SecBlacklist )eM(Fk.secUI ,r.Settings.SecUI )eM(Fk.dropLang ,r.Settings.LangTitle )eM(Fk.sliderTransp ,r.Settings.TranspTitle ,r.Settings.TranspDesc )eM(Fk.dropTheme ,r.Settings.ThemeTitle )eM(Fk.secPerformance ,r.Settings.SecPerformance )eM(Fk.togPerformance ,r.Settings.PerformanceTitle ,r.Settings.PerformanceDesc )eM(Fk.togDisable3D ,r.Settings.Disable3DTitle ,r.Settings.Disable3DDesc )eM(Fk.secSystem ,r.Settings.SecSystem )eM(Fk.togAntiAFK ,r.Settings.AntiAFKTitle ,r.Settings.AntiAFKDesc )eM(Fk.btnReset ,r.Settings.ResetTitle ,r.Settings.ResetDesc )eM(Fk.btnRejoin ,r.Settings.RejoinTitle ,r.Settings.RejoinDesc )eM(Fk.btnUnload ,r.Settings.UnloadTitle ,r.Settings.UnloadDesc )yM()
 end
+
 local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:Set3dRenderingEnabled( true )
     end
     )pcall(function(...)
@@ -4526,6 +4484,8 @@ local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:S
     end
     )
 end
+
+
 -- =========================================================================
 
 -- EGG CARD ESP & VISUALS (Pet Thumbnail, Name, Income $/s, Rarity Color)
@@ -4969,13 +4929,25 @@ local function refreshWorldEggEsp()
         for _, slot in ipairs(r.AreaEggSlotsClient:GetChildren()) do
             local uid = slot.Name
             if not rendered[uid] then
-                local p = slot:FindFirstChildWhichIsA("BasePart") or slot.PrimaryPart
-                if p and p.Position.X >= 530 then
-                    local dist = math.floor((myPos - p.Position).Magnitude)
-                    if dist <= maxDist then
-                        rendered[uid] = true
-                        local card = getEggCardData(nil, slot)
-                        addEggCardEsp(slot, card, dist, "")
+                -- Only render ESP if there is an actual egg in the nest!
+                local hasEggPrompt = slot:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil
+                local hasEggModel = false
+                for _, child in ipairs(slot:GetChildren()) do
+                    local cn = child.Name:lower()
+                    if cn:find("egg") or child:GetAttribute("EggUid") or child:GetAttribute("UID") or child:GetAttribute("Category") then
+                        hasEggModel = true
+                        break
+                    end
+                end
+                if hasEggPrompt or hasEggModel then
+                    local p = slot:FindFirstChildWhichIsA("BasePart") or slot.PrimaryPart
+                    if p and p.Position.X >= 530 then
+                        local dist = math.floor((myPos - p.Position).Magnitude)
+                        if dist <= maxDist then
+                            rendered[uid] = true
+                            local card = getEggCardData(nil, slot)
+                            addEggCardEsp(slot, card, dist, "")
+                        end
                     end
                 end
             end
@@ -5127,7 +5099,7 @@ StealTab:Button({
                 if ok then
                     pcall(u4)
                     if h.autoGlide then
-                        g4(h.glideSpeed, nil, true)
+                        Q4(h.glideSpeed)
                         pcall(u4)
                     end
                     notify("Auto Steal", "✅ Cướp trứng thành công!", "check", 2.0)
@@ -5360,8 +5332,75 @@ EspTab:Button({
 -- CHARACTER TAB
 CharTab:Section({ Title = "An toàn & Nhân vật" })
 CharTab:Toggle({
+    Title = "Bypass Speed (Đánh lừa Game - Chống giật)",
+    Desc = "Đánh lừa game hiển thị WalkSpeed=16, di chuyển mượt mà không bị giật lùi.",
+    Value = h.speedBypass ~= false,
+    Callback = function(state)
+        h.speedBypass = state
+        if state then
+            notify("Speed Bypass", "🚀 Đã BẬT Bypass Speed - Chạy nhanh không giật!", "zap", 2.0)
+        else
+            notify("Speed Bypass", "⏹️ Đã TẮT Bypass Speed!", "x", 2.0)
+        end
+    end,
+})
+CharTab:Slider({
+    Title = "Tốc độ chạy & Bypass Speed",
+    Desc = "Chỉnh tốc độ di chuyển mong muốn (16 - 80 studs/s, khuyên dùng 28 - 36).",
+    Step = 2,
+    Value = { Min = 16, Max = 80, Default = h.walkSpeed or 32 },
+    Callback = function(v)
+        h.walkSpeed = math.clamp(math.floor(v), 16, 80)
+        h.enableWalkSpeed = true
+        local hum = o.Character and o.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = math.min(h.walkSpeed, 26)
+        end
+    end,
+})
+CharTab:Toggle({
+    Title = "Chống đi chậm khi vác trứng/pet (Anti Slow)",
+    Desc = "Giữ tốc độ di chuyển tối đa ngay cả khi đang cầm trứng hoặc thú cưng.",
+    Value = h.antiCarrySlowdown ~= false,
+    Callback = function(state)
+        h.antiCarrySlowdown = state
+        if state then
+            notify("WalkSpeed", "⚡ Đã BẬT Chống đi chậm khi vác trứng!", "zap", 2.0)
+        else
+            notify("WalkSpeed", "⏹️ Đã TẮT Chống đi chậm!", "x", 2.0)
+        end
+    end,
+})
+CharTab:Toggle({
+    Title = "Chống bot đánh văng (Anti Knockback)",
+    Desc = "Giữ vững vị trí, không bị bot/lính gác đánh văng xa hay hất lên trời.",
+    Value = h.antiKnockback ~= false,
+    Callback = function(state)
+        h.antiKnockback = state
+        if state then
+            notify("Anti Knockback", "🛡️ Đã BẬT Chống bot đánh văng!", "shield-check", 2.0)
+        else
+            notify("Anti Knockback", "⚠️ Đã TẮT Chống bot đánh văng!", "shield-alert", 2.0)
+        end
+    end,
+})
+CharTab:Toggle({
+    Title = "Chống bẫy bản đồ (Anti Trap)",
+    Desc = "Miễn nhiễm 100% với bẫy (bear trap, mìn, gai) khi đi hoặc cầm trứng.",
+    Value = h.antiTrap ~= false,
+    Callback = function(state)
+        h.antiTrap = state
+        if state then
+            pcall(scanAndNeutralizeTraps)
+            notify("Anti Trap", "🛡️ Đã BẬT Miễn nhiễm bẫy!", "shield-check", 2.0)
+        else
+            notify("Anti Trap", "⚠️ Đã TẮT Miễn nhiễm bẫy!", "shield-alert", 2.0)
+        end
+    end,
+})
+CharTab:Toggle({
     Title = "Bất tử (Godmode)",
-    Desc = "Kháng 100% sát thương, bẫy và lính gác.",
+    Desc = "Kháng 100% sát thương, bẫy và lính gác (Desync Godmode).",
     Value = false,
     Callback = function(state)
         if state then
@@ -5370,53 +5409,6 @@ CharTab:Toggle({
         else
             pcall(disableDesyncGodmode)
             notify("Godmode", "⚠️ Đã TẮT Bất tử!", "shield-alert", 2.0)
-        end
-    end,
-})
-CharTab:Toggle({
-    Title = "Nhảy vô hạn (Infinite Jump)",
-    Desc = "Cho phép nhảy liên tục trên không, bấm phím nhảy là nhảy mượt mà.",
-    Value = true,
-    Callback = function(state)
-        _G._ZenithInfJump = state
-        if state then
-            notify("Nhân vật", "🦘 Đã BẬT Nhảy vô hạn!", "arrow-up", 2.0)
-        else
-            notify("Nhân vật", "⏹️ Đã TẮT Nhảy vô hạn!", "x", 2.0)
-        end
-    end,
-})
-CharTab:Toggle({
-    Title = "Tăng tốc chạy (WalkSpeed Hack)",
-    Desc = "Chạy nhanh mượt mà không bị giật lag.",
-    Value = false,
-    Callback = function(state)
-        _G._ZenithSpeedOn = state
-        local char = o.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed = state and (_G._ZenithSpeedVal or 32) or 16
-        end
-        if state then
-            notify("Nhân vật", "⚡ Đã BẬT Tăng tốc chạy!", "zap", 2.0)
-        else
-            notify("Nhân vật", "⏹️ Đã TẮT Tăng tốc chạy!", "x", 2.0)
-        end
-    end,
-})
-CharTab:Slider({
-    Title = "Tốc độ chạy (WalkSpeed)",
-    Desc = "Điều chỉnh tốc độ chạy của nhân vật (Mặc định: 16)",
-    Step = 1,
-    Value = { Min = 16, Max = 150, Default = 32 },
-    Callback = function(v)
-        _G._ZenithSpeedVal = math.floor(v)
-        if _G._ZenithSpeedOn then
-            local char = o.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.WalkSpeed = _G._ZenithSpeedVal
-            end
         end
     end,
 })
@@ -5548,32 +5540,6 @@ SettingsTab:Button({
     end,
 })
 print("[DuyMinh EGG] WindUI Red Edition loaded successfully!")
-
--- Global Jump & WalkSpeed controller
-_G._ZenithInfJump = true
-pcall(function()
-    w.JumpRequest:Connect(function()
-        local char = o.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum and hum.Health > 0 then
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            if _G._ZenithInfJump ~= false then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end)
-end)
-
-y.Heartbeat:Connect(function()
-    if _G._ZenithSpeedOn then
-        local char = o.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum and hum.WalkSpeed ~= (_G._ZenithSpeedVal or 32) then
-            hum.WalkSpeed = _G._ZenithSpeedVal or 32
-        end
-    end
-end)
-
 task.spawn(function()
 	task.wait(0.5)
 	pcall(A4)
@@ -5581,6 +5547,8 @@ task.spawn(function()
 	if o.Character then
 		pcall(z4, o.Character)
 	end
+	pcall(u4)
+	pcall(scanAndNeutralizeTraps)
 end)
 o.CharacterAdded:Connect(function(char)
 	task.wait(0.6)
@@ -5589,9 +5557,12 @@ o.CharacterAdded:Connect(function(char)
 		pcall(n4)
 		pcall(C4)
 		pcall(A4)
-		pcall(function() b4(true) end)
+		if h.godmode then
+			pcall(function() b4(true) end)
+		end
 		pcall(z4, char)
 		pcall(u4)
+		pcall(scanAndNeutralizeTraps)
 	end
 end)
 if h.performanceMode then
