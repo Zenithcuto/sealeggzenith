@@ -419,21 +419,24 @@ y4=function(...)
     return e
 end
 u4=function(e,...)
+    if h and h.isReturning then
+        return
+    end
     if not e and not((h.pureTweenFarm or h.autoFarmLoop or h.teleporting ))then
         return
     end
     local r=o.Character
     local y=r and r:FindFirstChildOfClass( "Humanoid" )
     local u=o:FindFirstChild( "Backpack" )
-    if y then
+    if y and not (h and h.isReturning) then
         pcall(function(...) y:UnequipTools()
         end
         )
     end
-    if r and u then
-        for e,r in ipairs(r:GetChildren())do
-            if r:IsA( "Tool" )then
-                pcall(function(...) r.Parent =u
+    if r and u and not (h and h.isReturning) then
+        for _,tool in ipairs(r:GetChildren())do
+            if tool:IsA( "Tool" ) and m(tool) then
+                pcall(function(...) tool.Parent =u
                 end
                 )
             end
@@ -441,13 +444,6 @@ u4=function(e,...)
     end
 end
 w4=function(e,...)
-    if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
-        local e=e4()
-        if e then
-            pcall(u4)
-        end
-        return false
-    end
     local r,y=e4()
     if r then
         if e then
@@ -775,26 +771,20 @@ S4=function(e,...) e=e or o.Character
     if not e then
         return
     end
-    local r=e:FindFirstChild( "HumanoidRootPart" )
-    local y=e:FindFirstChild( "Torso" )or e:FindFirstChild( "UpperTorso" )or r
-    if not y then
-        return
-    end
-    for e,r in ipairs(e:GetDescendants())do
+    for _,r in ipairs(e:GetDescendants())do
         if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
+            pcall(function(...) r:Destroy()
+            end
+            )
+        elseif r:IsA( "WeldConstraint" ) and string.find(r.Name, "RigidJointWeld_" )then
             pcall(function(...) r:Destroy()
             end
             )
         end
     end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "Motor6D" )and(r.Part0 and r.Part1 )then
+    for _,r in ipairs(e:GetDescendants())do
+        if r:IsA( "Motor6D" )then
             r.Enabled = true
-            local e= "RigidJointWeld_" ..r.Name
-            local y=r.Part1 :FindFirstChild(e)
-            if not y then
-                local y=Instance.new ( "WeldConstraint" )y.Name =e y.Part0 =r.Part0 y.Part1 =r.Part1 y.Parent =r.Part1
-            end
         end
     end
 end
@@ -808,7 +798,18 @@ Z4=function(e,...)
     end
     local r=e:FindFirstChildOfClass( "Humanoid" )
     if r then
-        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )
+        r:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )
+        r:SetStateEnabled(Enum.HumanoidStateType.Running , true )
+        r:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )
+        r.JumpPower = math.max ( 50 , r.JumpPower )
+        r.JumpHeight = math.max ( 7.2 , r.JumpHeight )
+        r.AutoRotate = true
         if r.PlatformStand then
             r.PlatformStand = false
         end
@@ -816,9 +817,9 @@ Z4=function(e,...)
             r.Sit = false
         end
     end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "LocalScript" )and((string.find (string.lower (r.Name ), "ragdoll" )or string.find (string.lower (r.Name ), "fall" )))then
-            r.Disabled = true
+    for _,item in ipairs(e:GetDescendants())do
+        if item:IsA( "LocalScript" )and((string.find (string.lower (item.Name ), "ragdoll" )or string.find (string.lower (item.Name ), "fall" )))then
+            item.Disabled = true
         end
     end
     S4(e)
@@ -850,7 +851,7 @@ z4=function(e,...)
         end
     end
     )e.ChildAdded :Connect(function(e,...)
-        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
+        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard and not h.isReturning )then
             task.defer (function(...) u4()
             end
             )
@@ -1106,10 +1107,22 @@ end
 )D4=function(...) h.onTreadmill = false h.teleporting = false h.glidingToTarget = false h.securingEgg = false h.isReturning = false h.delivering = false h.holdingEggForGuard = false h.currentTargetModel =nil h.targetPosition =nil h.stateTime =os.clock ()
     local e=o.Character
     local r=e and e:FindFirstChild( "HumanoidRootPart" )
+    local hum=e and e:FindFirstChildOfClass( "Humanoid" )
     if r then
         pcall(function(...) r.Anchored = false r.AssemblyLinearVelocity =Vector3.zero r.AssemblyAngularVelocity =Vector3.zero
         end
         )
+    end
+    if hum then
+        pcall(function(...)
+            hum.AutoRotate = true
+            hum.PlatformStand = false
+            hum.Sit = false
+            hum.WalkSpeed = math.max(16, hum.WalkSpeed)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+            hum:ChangeState(Enum.HumanoidStateType.Running)
+        end)
     end
     pcall(function(...)
         if C4 then
@@ -1168,14 +1181,21 @@ b4=function(e,...) h.godmode =e
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
         y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
-        if e and y.Health < 100 then
+        if e and y.Health < 100 and y.Health > 0 then
             y.Health = 100
         end
     end
-    for r,y in ipairs(r:GetDescendants())do
-        if y:IsA( "BasePart" )then
-            if e then
-                y.CanTouch = false y.CanCollide = false
+    for _,part in ipairs(r:GetDescendants())do
+        if part:IsA( "BasePart" )then
+            part.CanTouch = true
+            if e and (h.glidingToTarget or h.isReturning or h.teleporting) then
+                if part.Name ~= "HumanoidRootPart" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
+                    part.CanCollide = false
+                end
+            else
+                if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
+                    part.CanCollide = true
+                end
             end
         end
     end
@@ -1193,22 +1213,27 @@ A4=function(...)
     if not e or not y then
         return false
     end
-    pcall(function(...) y.BreakJointsOnDeath = false
-        local w=y:Clone()w.Parent =e y:Destroy()
-        local j=w:FindFirstChildOfClass( "Animator" )
-        if not j then
-            j=Instance.new ( "Animator" )j.Parent =w
+    pcall(function(...)
+        y.BreakJointsOnDeath = false
+        y:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )
+        y:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )
+        y:SetStateEnabled(Enum.HumanoidStateType.Running , true )
+        y:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )
+        y:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )
+        y:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )
+        y:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )
+        y.JumpPower = math.max ( 50 , y.JumpPower )
+        y.JumpHeight = math.max ( 7.2 , y.JumpHeight )
+        y.AutoRotate = true
+        y.PlatformStand = false
+        y.Sit = false
+        if y.Health > 0 and y.Health < 100 then
+            y.Health = 100
         end
-        r.CurrentCamera.CameraSubject =w
-        local k=e:FindFirstChild( "Animate" )
-        if k and k:IsA( "LocalScript" )then
-            k.Disabled = true task.defer (function(...) task.wait ( 0.05 )k.Disabled = false
-            end
-            )
-        end
-        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w:ChangeState(Enum.HumanoidStateType.Running )
+        y:ChangeState(Enum.HumanoidStateType.Running )
     end
-    )h.swapped = true
+    )
+    h.swapped = true
     if h.godmode then
         b4( true )
     end
@@ -1581,10 +1606,16 @@ g4=function(e,r,u,...)
     if k then
         k.AutoRotate = false
     end
-    local a=s4()e=math.max ( 100 ,e or h.glideSpeed or 600 )
-    local V=h.laneZ or L h.isReturning = true h.stateTime =os.clock ()V4(a, 20 )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
-    local H=o4()
-    local t=math.max (e,H)
+    local a=s4()
+    e=math.max ( 100 ,e or h.glideSpeed or 600 )
+    local V=h.laneZ or L 
+    h.isReturning = true 
+    h.stateTime =os.clock ()
+    V4(a, 20 )
+    j.AssemblyLinearVelocity =Vector3.zero 
+    j.AssemblyAngularVelocity =Vector3.zero
+    local H_limit=o4()
+    local t=math.max (e,H_limit)
     local s=os.clock ()+ 25
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
@@ -1601,62 +1632,83 @@ g4=function(e,r,u,...)
             h.isReturning = false
             return false
         end
-        local e=j.Position
-        local w=((a-e)).Magnitude
-        if(e.X <=(a.X + 3 )and math.abs (e.Z -a.Z )<= 8 )or w<= 6 then
+        local pos=j.Position
+        local w_dist=((a-pos)).Magnitude
+        if(pos.X <=(a.X + 3 )and math.abs (pos.Z -a.Z )<= 8 )or w_dist<= 6 then
             break
         end
-        local o=y.Heartbeat :Wait()e=j.Position
-        local H=t
-        if e.X <=b and e.X >E then
-            local r=math.clamp (((e.X -E))/((b-E)), 0 , 1 )H=math.max(250, A+(((t-A))*r))
-        elseif e.X <=E then
-            H=math.max(220, A)
+        local dt=y.Heartbeat :Wait()
+        pos=j.Position
+        local curH=t
+        if pos.X <=b and pos.X >E then
+            local r_factor=math.clamp (((pos.X -E))/((b-E)), 0 , 1 )
+            curH=A+(((t-A))*r_factor)
+        elseif pos.X <=E then
+            curH=math.min(130, A)
         end
-        local s=a.Z
-        if e.X > 540 then
-            s=V
+        local targetZ=a.Z
+        if pos.X > 540 then
+            targetZ=V
         end
-        local B=math.sign (a.X -e.X )
-        local J=B*math.min (math.abs (a.X -e.X ),H*o)
-        local K=e.X +J
-        local c=math.sign (a.Y -e.Y )
-        local v=c*math.min (math.abs (a.Y -e.Y ),(H*o)* 0.5 )
-        local i=e.Y +v
-        local R=s-e.Z
-        local g=math.sign (R)*math.min (math.abs (R),H*o)
-        local Q=e.Z +g
-        local P=i4()
-        local N= false
-        if e.X >E then
-            for e,r in ipairs(P)do
-                local y=r.Position
-                local u=((Vector3.new (K,i,Q)-y)).Magnitude
-                local w=math.abs (K-y.X )
-                local j=math.abs (Q-y.Z )
-                if u< 22 or(w< 18 and j< 14 )then
-                    N= true
-                    local e=y.Y + 16
-                    if i<e then
-                        i=math.min (i+((H*o)* 1.5 ),e)
+        local dirX=math.sign (a.X -pos.X )
+        local stepX=dirX*math.min (math.abs (a.X -pos.X ),curH*dt)
+        local nextX=pos.X +stepX
+        local dirY=math.sign (a.Y -pos.Y )
+        local stepY=dirY*math.min (math.abs (a.Y -pos.Y ),(curH*dt)* 0.5 )
+        local nextY=pos.Y +stepY
+        local diffZ=targetZ-pos.Z
+        local stepZ=math.sign (diffZ)*math.min (math.abs (diffZ),curH*dt)
+        local nextZ=pos.Z +stepZ
+        local debris=i4()
+        local isDodging= false
+        if pos.X >E then
+            for _,deb in ipairs(debris)do
+                local debPos=deb.Position
+                local d_mag=((Vector3.new (nextX,nextY,nextZ)-debPos)).Magnitude
+                local dx=math.abs (nextX-debPos.X )
+                local dz=math.abs (nextZ-debPos.Z )
+                if d_mag< 22 or(dx< 18 and dz< 14 )then
+                    isDodging= true
+                    local safeY=debPos.Y + 16
+                    if nextY<safeY then
+                        nextY=math.min (nextY+((curH*dt)* 1.5 ),safeY)
                     end
                     break
                 end
             end
         end
-        local U=Vector3.new (K,i,Q)
-        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or j.CFrame.LookVector j.CFrame =CFrame.lookAt (U,U+l)j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
-        if N then
-            h.statusText =string.format ( "Tweening Home (Z: %.0f) [DODGING TRAP!]" ,Q)
+        local nextPos=Vector3.new (nextX,nextY,nextZ)
+        local faceDir=((nextPos-pos)).Magnitude > 0.05 and((nextPos-pos)).Unit or j.CFrame.LookVector 
+        j.CFrame =CFrame.lookAt (nextPos,nextPos+faceDir)
+        j.AssemblyLinearVelocity =Vector3.zero 
+        j.AssemblyAngularVelocity =Vector3.zero
+        if isDodging then
+            h.statusText =string.format ( "Bay về vườn (Z: %.0f) [NÉ BẪY!]" ,nextZ)
         else
-            h.statusText =string.format ( "Tweening Home (%.0f studs | Z: %.0f | Spd: %.0f)" ,w,Q,H)
+            h.statusText =string.format ( "Đang bay về khu vườn (%.0f studs | Tốc độ: %.0f)" ,w_dist,curH)
         end
     end
-    j.CFrame =CFrame.new (a)j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
+    j.CFrame =CFrame.new (a)
+    j.AssemblyLinearVelocity =Vector3.zero 
+    j.AssemblyAngularVelocity =Vector3.zero
     if k then
         k.AutoRotate = true
     end
-    u4()h.isReturning = false h.delivering = false h.statusText = "Arrived at Base PetArea!"
+    h.isReturning = false 
+    h.delivering = false 
+    h.statusText = "[Đã về vườn] Đang đặt trứng lên kệ..."
+    H("[AutoSteal] Arrived at Base PetArea! Depositing egg...")
+    task.wait(0.1)
+    local placeLimit = os.clock() + 3
+    while y4() > 0 and os.clock() < placeLimit and h.alive do
+        B4()
+        task.wait(0.06)
+    end
+    if h.autoHatch then
+        J4(true)
+    end
+    u4()
+    h.statusText = string.format("Đã về vườn an toàn (Còn %d trứng). Sẵn sàng lượt mới!", y4())
     return true
 end
 v4=function(e,r,y,...)
@@ -3236,24 +3288,12 @@ h.securingEgg = false
 h.holdingEggForGuard = false
 return false
 end
-if P then
-task.spawn(function()
-pcall(function()
-if P:IsA( "RemoteFunction" )then
-P:InvokeServer()
-else
-P:FireServer()
-end
-end)
-end)
-end
-pcall(u4)
 h.currentTargetModel =nil
 h.targetPosition =nil
 h.securingEgg = false
 h.holdingEggForGuard = false
 h.statusText = "Đã lấy trứng! Đang bay thẳng về khu vườn..."
-H( "[AutoSteal] Egg secured immediately! Zero delay." )
+H( "[AutoSteal] Egg secured immediately! Holding egg and returning..." )
 return true
 end
 l4=function(e,u,...)
@@ -3542,14 +3582,23 @@ local Ck=os.clock ()task.spawn (function(...)
                                     return
                                 end
                                 if r then
-                                    pcall(u4)
                                     if h.autoGlide then
-                                        h.statusText = "[AutoSteal] Đã lấy trứng! Đang bay thẳng về khu vườn..." H( "[AutoSteal] Egg secured after Guard Strike! Returning smoothly to Safe Line X=525 along Z=-360..." )g4(h.glideSpeed ,u, true)pcall(u4)
-                                        local r=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next steal..." ,r)H(string.format ( "[AutoSteal] Egg stashed in bag (%d total eggs). Hands-Free ready for next steal..." ,r))
+                                        h.statusText = "[AutoSteal] Đã lấy trứng! Đang bay thẳng về khu vườn..."
+                                        H( "[AutoSteal] Egg secured! Returning smoothly to Base along Z=-360..." )
+                                        g4(h.glideSpeed ,u, true)
                                     else
-                                        h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
+                                        h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" 
+                                        H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
                                     end
-                                    pcall(u4)h.isReturning = false h.delivering = false h.glidingToTarget = false h.securingEgg = false h.currentTargetModel =nil h.targetPosition =nil
+                                    h.isReturning = false 
+                                    h.delivering = false 
+                                    h.glidingToTarget = false 
+                                    h.securingEgg = false 
+                                    h.currentTargetModel =nil 
+                                    h.targetPosition =nil
+                                    local rem = y4()
+                                    h.statusText = string.format("Đã về vườn (Còn %d trứng). Chuẩn bị lượt mới...", rem)
+                                    task.wait(0.1)
                                     if c4( "TWEEN" )then
                                         return
                                     end
@@ -3610,14 +3659,18 @@ local qk=os.clock ()task.spawn (function(...)
                                 return
                             end
                             if w then
-                                pcall(u4)
                                 if h.autoGlide then
-                                    h.statusText = "[SnipeLoop] Đã cướp trứng! Đang bay thẳng về khu vườn..." g4(h.glideSpeed ,r, true)pcall(u4)
-                                    local y=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next snipe..." ,y)H(string.format ( "[SnipeLoop] Egg stashed in bag (%d total eggs). Hands-Free ready for next snipe..." ,y))
+                                    h.statusText = "[SnipeLoop] Đã cướp trứng! Đang bay thẳng về khu vườn..."
+                                    g4(h.glideSpeed ,r, true)
                                 else
-                                    h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)" H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
+                                    h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)"
+                                    H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
                                 end
-                                pcall(u4)h.isReturning = false h.delivering = false
+                                h.isReturning = false 
+                                h.delivering = false
+                                local rem = y4()
+                                h.statusText = string.format("Đã về vườn (Còn %d trứng). Chuẩn bị lượt mới...", rem)
+                                task.wait(0.1)
                                 if c4( "WARP" )then
                                     return
                                 end
@@ -5030,7 +5083,7 @@ EspTab:Button({
 CharTab:Section({ Title = "An toàn & Nhân vật" })
 CharTab:Toggle({
     Title = "Bất tử (Godmode)",
-    Desc = "Kháng 100% sát thương, bẫy và lính gác (Desync Godmode).",
+    Desc = "Kháng 100% sát thương, bẫy và lính gác.",
     Value = false,
     Callback = function(state)
         if state then
@@ -5039,6 +5092,53 @@ CharTab:Toggle({
         else
             pcall(disableDesyncGodmode)
             notify("Godmode", "⚠️ Đã TẮT Bất tử!", "shield-alert", 2.0)
+        end
+    end,
+})
+CharTab:Toggle({
+    Title = "Nhảy vô hạn (Infinite Jump)",
+    Desc = "Cho phép nhảy liên tục trên không, bấm phím nhảy là nhảy mượt mà.",
+    Value = true,
+    Callback = function(state)
+        _G._ZenithInfJump = state
+        if state then
+            notify("Nhân vật", "🦘 Đã BẬT Nhảy vô hạn!", "arrow-up", 2.0)
+        else
+            notify("Nhân vật", "⏹️ Đã TẮT Nhảy vô hạn!", "x", 2.0)
+        end
+    end,
+})
+CharTab:Toggle({
+    Title = "Tăng tốc chạy (WalkSpeed Hack)",
+    Desc = "Chạy nhanh mượt mà không bị giật lag.",
+    Value = false,
+    Callback = function(state)
+        _G._ZenithSpeedOn = state
+        local char = o.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = state and (_G._ZenithSpeedVal or 32) or 16
+        end
+        if state then
+            notify("Nhân vật", "⚡ Đã BẬT Tăng tốc chạy!", "zap", 2.0)
+        else
+            notify("Nhân vật", "⏹️ Đã TẮT Tăng tốc chạy!", "x", 2.0)
+        end
+    end,
+})
+CharTab:Slider({
+    Title = "Tốc độ chạy (WalkSpeed)",
+    Desc = "Điều chỉnh tốc độ chạy của nhân vật (Mặc định: 16)",
+    Step = 1,
+    Value = { Min = 16, Max = 150, Default = 32 },
+    Callback = function(v)
+        _G._ZenithSpeedVal = math.floor(v)
+        if _G._ZenithSpeedOn then
+            local char = o.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = _G._ZenithSpeedVal
+            end
         end
     end,
 })
@@ -5170,15 +5270,39 @@ SettingsTab:Button({
     end,
 })
 print("[DuyMinh EGG] WindUI Red Edition loaded successfully!")
+
+-- Global Jump & WalkSpeed controller
+_G._ZenithInfJump = true
+pcall(function()
+    w.JumpRequest:Connect(function()
+        local char = o.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            if _G._ZenithInfJump ~= false then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+end)
+
+y.Heartbeat:Connect(function()
+    if _G._ZenithSpeedOn then
+        local char = o.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.WalkSpeed ~= (_G._ZenithSpeedVal or 32) then
+            hum.WalkSpeed = _G._ZenithSpeedVal or 32
+        end
+    end
+end)
+
 task.spawn(function()
 	task.wait(0.5)
 	pcall(A4)
-	pcall(function() b4(true) end)
 	pcall(C4)
 	if o.Character then
 		pcall(z4, o.Character)
 	end
-	pcall(u4)
 end)
 o.CharacterAdded:Connect(function(char)
 	task.wait(0.6)
