@@ -94,6 +94,157 @@ local D=J( "RF/Treadmill/AskTierRaise" , "Treadmills: RequestUpgrade" , "AskTier
 local C=J( "RF/Trailwear/AskPurchase" , "Trailwear: RequestPurchase" , "AskPurchase" )
 local q=J( "RF/Trailwear/AskChoose" , "Trailwear: RequestEquip" , "AskChoose" )
 local n=J( "RF/Trailwear/AskDoff" , "Trailwear: RequestUnequip" , "AskDoff" )H(string.format ( "[RemoteCheck] Carry: %s | Snapshot: %s | Place: %s | Hatch: %s | FinishHatch: %s | Strike: %s | Toll: %s | Doff: %s" ,tostring(i~=nil),tostring(R~=nil),tostring(K~=nil),tostring(g~=nil),tostring(Q~=nil),tostring(P~=nil),tostring(N~=nil),tostring(U~=nil)))
+
+-- =========================================================================
+-- [ANTIGRAVITY FIX] CLIENT AC BYPASS, SPEEDPOWER FREEZE & NETWORK PIVOT SYNC
+-- =========================================================================
+local function bypassClientDetections()
+    if typeof(filtergc) ~= "function" or typeof(debug) ~= "table" or typeof(debug.getupvalues) ~= "function" then
+        return false, "no filtergc"
+    end
+    local ok, fn = pcall(function()
+        return filtergc("function", {
+            Constants = { "gmatch", "GetFullName" },
+        }, true)
+    end)
+    if not ok or type(fn) ~= "function" then
+        return false, "filter miss"
+    end
+    local setMeta = (typeof(setrawmetatable) == "function" and setrawmetatable)
+        or (typeof(setmetatable) == "function" and setmetatable)
+    if not setMeta then
+        return false, "no setmeta"
+    end
+    local blocked = 0
+    local okUv, ups = pcall(debug.getupvalues, fn)
+    if not okUv or type(ups) ~= "table" then
+        return false, "no upvalues"
+    end
+    for _, tbl in pairs(ups) do
+        if typeof(tbl) == "table" then
+            local okSet = pcall(setMeta, tbl, {
+                __newindex = function() end,
+            })
+            if okSet then
+                blocked = blocked + 1
+            end
+        end
+    end
+    return blocked > 0, blocked
+end
+pcall(bypassClientDetections)
+
+local function freezeSpeedPower()
+    pcall(function()
+        local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
+        local client = lib and (lib:FindFirstChild("Client") or lib:WaitForChild("Client", 5))
+        local speedProj = client and (client:FindFirstChild("SpeedPowerProjection") and require(client.SpeedPowerProjection))
+        local fn = speedProj and speedProj.GetSpeedPower
+        if type(fn) == "function" and type(setupvalue) == "function" and type(getupvalue) == "function" then
+            for i = 1, 12 do
+                local v = getupvalue(fn, i)
+                if type(v) == "number" then
+                    setupvalue(fn, i, 1e7)
+                    break
+                end
+            end
+        end
+    end)
+    pcall(function()
+        local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
+        local client = lib and (lib:FindFirstChild("Client") or lib:WaitForChild("Client", 5))
+        local saveMod = client and (client:FindFirstChild("Save") and require(client.Save))
+        local d = saveMod and saveMod.Get and saveMod.Get()
+        if type(d) == "table" and type(d.SpeedPower) == "number" and d.SpeedPower < 1e6 then
+            d.SpeedPower = 1e7
+        end
+    end)
+end
+pcall(freezeSpeedPower)
+
+local NetworkMod = nil
+pcall(function()
+    local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
+    local client = lib and (lib:FindFirstChild("Client") or lib:WaitForChild("Client", 5))
+    if client and client:FindFirstChild("Network") then
+        NetworkMod = require(client.Network)
+    end
+end)
+
+local ConstantsMod = nil
+pcall(function()
+    local lib = j:FindFirstChild("Library") or j:WaitForChild("Library", 5)
+    local globals = lib and (lib:FindFirstChild("Globals") or lib:WaitForChild("Globals", 5))
+    if globals and globals:FindFirstChild("Constants") then
+        ConstantsMod = require(globals.Constants)
+    end
+end)
+
+local NetMap = (ConstantsMod and ConstantsMod.NETWORK_MAP) or (NetworkMod and NetworkMod.NET_MAP)
+local PivotKey = (NetMap and NetMap.ClientCharacter and NetMap.ClientCharacter.SET_PIVOT) or "ClientCharacter: SetPivot"
+
+local function firePivot(cf)
+    if not cf then return end
+    pcall(function()
+        if NetworkMod and PivotKey and NetworkMod.Fire then
+            NetworkMod.Fire(PivotKey, cf)
+        end
+    end)
+    pcall(function()
+        local rmt = J("ClientCharacter: SetPivot", "SetPivot")
+        if rmt then
+            if rmt:IsA("RemoteEvent") then
+                rmt:FireServer(cf)
+            elseif rmt:IsA("RemoteFunction") then
+                rmt:InvokeServer(cf)
+            end
+        end
+    end)
+end
+
+local function protectHumanoid(char)
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    pcall(function()
+        hum.BreakJointsOnDeath = false
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        if hum.Health > 0 and hum.Health < 100 then
+            hum.Health = 100
+        end
+    end)
+    if not hum:FindFirstChild("ZenithGodConn") then
+        local tag = Instance.new("BoolValue")
+        tag.Name = "ZenithGodConn"
+        tag.Parent = hum
+        hum.HealthChanged:Connect(function(hp)
+            if (h and (h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg or h.godmode)) and hp < 100 and hp > 0 then
+                hum.Health = 100
+            end
+        end)
+    end
+end
+
+y.Stepped:Connect(function()
+    if h and (h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg or h.godmode) then
+        local char = o.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+o.CharacterAdded:Connect(function(char)
+    task.wait(0.2)
+    protectHumanoid(char)
+end)
+
 local f={[ "Light Dark" ]= 1300 ,[ "LightDark" ]= 1300 ;
 [ "Titan Temple" ]= 1100 ,[ "Cherry Blossom" ]= 1000 ,[ "Cosmic" ]= 900 ;
 [ "Prehistoric" ]= 800 ;
@@ -1178,6 +1329,7 @@ b4=function(e,...) h.godmode =e
     if not r then
         return
     end
+    protectHumanoid(r)
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
         y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
@@ -1188,10 +1340,8 @@ b4=function(e,...) h.godmode =e
     for _,part in ipairs(r:GetDescendants())do
         if part:IsA( "BasePart" )then
             part.CanTouch = true
-            if e and (h.glidingToTarget or h.isReturning or h.teleporting) then
-                if part.Name ~= "HumanoidRootPart" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" then
-                    part.CanCollide = false
-                end
+            if e and (h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg) then
+                part.CanCollide = false
             else
                 if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
                     part.CanCollide = true
@@ -1679,18 +1829,25 @@ g4=function(e,r,u,...)
         end
         local nextPos=Vector3.new (nextX,nextY,nextZ)
         local faceDir=((nextPos-pos)).Magnitude > 0.05 and((nextPos-pos)).Unit or j.CFrame.LookVector 
-        j.CFrame =CFrame.lookAt (nextPos,nextPos+faceDir)
+        local nextCf = CFrame.lookAt (nextPos,nextPos+faceDir)
+        j.CFrame = nextCf
         j.AssemblyLinearVelocity =Vector3.zero 
         j.AssemblyAngularVelocity =Vector3.zero
+        firePivot(nextCf)
+        if k and k.Health < 100 and k.Health > 0 then
+            k.Health = 100
+        end
         if isDodging then
             h.statusText =string.format ( "Bay về vườn (Z: %.0f) [NÉ BẪY!]" ,nextZ)
         else
             h.statusText =string.format ( "Đang bay về khu vườn (%.0f studs | Tốc độ: %.0f)" ,w_dist,curH)
         end
     end
-    j.CFrame =CFrame.new (a)
+    local retCf = CFrame.new (a)
+    j.CFrame = retCf
     j.AssemblyLinearVelocity =Vector3.zero 
     j.AssemblyAngularVelocity =Vector3.zero
+    firePivot(retCf)
     if k then
         k.AutoRotate = true
     end
@@ -1784,125 +1941,182 @@ c4=function(e,...)
     end
     return false
 end
-local function wk(e,r,u,w,...)
-    local j=o.Character
-    local k=j and j:FindFirstChild( "HumanoidRootPart" )
-    local a=j and j:FindFirstChildOfClass( "Humanoid" )
+local function wk(e, r, u, w, ...)
+    local j = o.Character
+    local k = j and j:FindFirstChild("HumanoidRootPart")
+    local a = j and j:FindFirstChildOfClass("Humanoid")
     if not k then
         return false
     end
     if a then
         a.AutoRotate = false
     end
-    r=math.max ( 60 ,r or h.glideSpeed or 350 )
-    local V=e.Position V4(V, 14 )pcall(function(...) o:RequestStreamAroundAsync(V)
-    end
-    )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
-    local H=h.laneZ or L h.glidingToTarget = true h.stateTime =os.clock ()
-    local t= 0
-    local s=os.clock ()+ 15
-    while h.alive and(h.glidingToTarget and os.clock ()<s)do
-        if w and O4~=w then
-            if a then
-                a.AutoRotate = true
-            end
+    protectHumanoid(j)
+    r = math.max(60, r or h.glideSpeed or 350)
+    local V = e.Position
+    V4(V, 14)
+    pcall(function(...) o:RequestStreamAroundAsync(V) end)
+    k.AssemblyLinearVelocity = Vector3.zero
+    k.AssemblyAngularVelocity = Vector3.zero
+    local H = h.laneZ or L
+    h.glidingToTarget = true
+    h.stateTime = os.clock()
+    local t = 0
+    local s = os.clock() + 18
+    while h.alive and (h.glidingToTarget and os.clock() < s) do
+        if w and O4 ~= w then
+            if a then a.AutoRotate = true end
             h.glidingToTarget = false
             return false
         end
-        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
-            if a then
-                a.AutoRotate = true
-            end
+        if not h.pureTweenFarm and (not h.autoFarmLoop and not h.teleporting) then
+            if a then a.AutoRotate = true end
             h.glidingToTarget = false
             return false
         end
-        local e=k.Position
-        local j=((V-e)).Magnitude
-        local o=((Vector2.new (e.X ,e.Z )-Vector2.new (V.X ,V.Z ))).Magnitude
-        local s=math.abs (e.Y -V.Y )
-        if j<= 6 or(o<= 3.5 and s<= 6 )then
+        local curPos = k.Position
+        local distTotal = ((V - curPos)).Magnitude
+        local distHoriz = ((Vector2.new(curPos.X, curPos.Z) - Vector2.new(V.X, V.Z))).Magnitude
+        local distY = math.abs(curPos.Y - V.Y)
+        if distTotal <= 6 or (distHoriz <= 3.5 and distY <= 6) then
             break
         end
-        local B=y.Heartbeat :Wait()e=k.Position j=((V-e)).Magnitude o=((Vector2.new (e.X ,e.Z )-Vector2.new (V.X ,V.Z ))).Magnitude
-        local J=math.abs (e.X -V.X )
-        if u and(os.clock ()-t> 0.5 )then
-            t=os.clock ()
-            local e,r=k4(u)
-            if not e and r== "CarriedByOther" then
-                if a then
-                    a.AutoRotate = true
-                end
+
+        local dt = y.Heartbeat:Wait()
+        curPos = k.Position
+        distTotal = ((V - curPos)).Magnitude
+        distHoriz = ((Vector2.new(curPos.X, curPos.Z) - Vector2.new(V.X, V.Z))).Magnitude
+        local distX = math.abs(curPos.X - V.X)
+
+        if u and (os.clock() - t > 0.4) then
+            t = os.clock()
+            local okTarget, resState = k4(u)
+            if not okTarget and resState == "CarriedByOther" then
+                if a then a.AutoRotate = true end
                 h.glidingToTarget = false
                 return false
             end
         end
-        local K=V.Z
-        if J> 40 then
-            K=H
+
+        -- Smooth speed ramp near base entrance (E = 525, b = 620)
+        local curSpeed = r
+        if curPos.X <= E then
+            curSpeed = math.min(140, r)
+        elseif curPos.X <= b then
+            local factor = math.clamp((curPos.X - E) / (b - E), 0, 1)
+            curSpeed = 140 + ((r - 140) * factor)
         end
-        local c=math.sign (V.X -e.X )
-        local v=c*math.min (math.abs (V.X -e.X ),r*B)
-        local i=e.X +v
-        local R=(o<= 25 )and 1.2 or 0.5
-        local g=math.sign (V.Y -e.Y )
-        local Q=g*math.min (math.abs (V.Y -e.Y ),(r*B)*R)
-        local P=e.Y +Q
-        local N=K-e.Z
-        local U=math.sign (N)*math.min (math.abs (N),r*B)
-        local l=e.Z +U
-        local D= false
-        if o> 25 then
-            local e=i4()
-            for e,y in ipairs(e)do
-                local u=y.Position
-                local w=((Vector3.new (i,P,l)-u)).Magnitude
-                local j=math.abs (i-u.X )
-                local k=math.abs (l-u.Z )
-                if w< 22 or(j< 18 and k< 14 )then
-                    D= true
-                    local e=u.Y + 16
-                    if P<e then
-                        P=math.min (P+((r*B)* 1.5 ),e)
+
+        -- Corridor Z: stay along center lane Z = -360 while travelling across zones
+        local targetZ = V.Z
+        if distX > 40 then
+            targetZ = H
+        end
+
+        -- CRUCIAL ELEVATION CONTROL:
+        -- Stay at high safe corridor altitude (Y >= 70) until close to the egg!
+        -- Prevents plowing into base fences, terrain slopes, guards, and map killbricks!
+        local targetY = V.Y
+        if distX > 40 or distHoriz > 30 then
+            targetY = math.max(70, V.Y + 25)
+        end
+
+        local dirX = math.sign(V.X - curPos.X)
+        local stepX = dirX * math.min(math.abs(V.X - curPos.X), curSpeed * dt)
+        local nextX = curPos.X + stepX
+
+        local dirY = math.sign(targetY - curPos.Y)
+        local ySpeedFactor = (distHoriz <= 25) and 1.2 or 0.7
+        local stepY = dirY * math.min(math.abs(targetY - curPos.Y), curSpeed * dt * ySpeedFactor)
+        local nextY = curPos.Y + stepY
+
+        local diffZ = targetZ - curPos.Z
+        local stepZ = math.sign(diffZ) * math.min(math.abs(diffZ), curSpeed * dt)
+        local nextZ = curPos.Z + stepZ
+
+        -- Obstacle / Trap dodge
+        local isDodging = false
+        if distHoriz > 25 then
+            local debris = i4()
+            for _, deb in ipairs(debris) do
+                local debPos = deb.Position
+                local dMag = ((Vector3.new(nextX, nextY, nextZ) - debPos)).Magnitude
+                local dx = math.abs(nextX - debPos.X)
+                local dz = math.abs(nextZ - debPos.Z)
+                if dMag < 22 or (dx < 18 and dz < 14) then
+                    isDodging = true
+                    local safeY = debPos.Y + 16
+                    if nextY < safeY then
+                        nextY = math.min(nextY + (curSpeed * dt * 1.5), safeY)
                     end
                     break
                 end
             end
         end
-        local C=Vector3.new (i,P,l)
-        local q=((C-e)).Magnitude > 0.05 and((C-e)).Unit or k.CFrame.LookVector k.CFrame =CFrame.lookAt (C,C+q)k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
-        if D then
-            h.statusText =string.format ( "Gliding Out (Z: %.0f) [DODGING TRAP!]" ,l)
+
+        local nextPos = Vector3.new(nextX, nextY, nextZ)
+        local faceDir = ((nextPos - curPos)).Magnitude > 0.05 and ((nextPos - curPos)).Unit or k.CFrame.LookVector
+        local nextCf = CFrame.lookAt(nextPos, nextPos + faceDir)
+        k.CFrame = nextCf
+        k.AssemblyLinearVelocity = Vector3.zero
+        k.AssemblyAngularVelocity = Vector3.zero
+        firePivot(nextCf)
+
+        if a then
+            if a.Health < 100 and a.Health > 0 then
+                a.Health = 100
+            end
+            if a:GetState() == Enum.HumanoidStateType.Dead or a:GetState() == Enum.HumanoidStateType.Ragdoll then
+                a:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end
+
+        if isDodging then
+            h.statusText = string.format("Bay tới trứng (Z: %.0f) [NÉ BẪY!]", nextZ)
         else
-            h.statusText =string.format ( "Gliding -> Egg (%.0f studs | H: %.0f)" ,j,o)
+            h.statusText = string.format("Đang bay tới trứng (%.0f studs | Tốc độ: %.0f)", distTotal, curSpeed)
         end
     end
-    k.CFrame =e*CFrame.new ( 0 , 0.4 , 0 )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
+
+    local finalCf = e * CFrame.new(0, 0.4, 0)
+    k.CFrame = finalCf
+    k.AssemblyLinearVelocity = Vector3.zero
+    k.AssemblyAngularVelocity = Vector3.zero
+    firePivot(finalCf)
+
     if a then
         a.AutoRotate = true
+        if a.Health < 100 and a.Health > 0 then
+            a.Health = 100
+        end
     end
     h.glidingToTarget = false
     return true
 end
-R4=function(e,r,y,u,...)
-    local w=o.Character
-    local j=w and w:FindFirstChild( "HumanoidRootPart" )
+
+R4 = function(e, r, y_uid, u, ...)
+    local w = o.Character
+    local j = w and w:FindFirstChild("HumanoidRootPart")
     if j then
-        local w=j.Position.X
-        local a=e.Position.X
-        if w<= 535 and a> 510 then
-            local e=CFrame.new ( 500 , 70 , -364 )
-            local a=((j.Position -e.Position )).Magnitude
-            if a> 5 then
-                h.statusText = "[AutoSteal] Exiting Base -> Waypoint (500, 70, -364)..." H(string.format ( "[AutoSteal] Leaving base (X=%.1f): Gliding to waypoint (500, 70, -364) first (dist=%.1f studs)..." ,w,a))
-                local j=wk(e,r,y,u)
-                if not j then
-                    return false
-                end
-                task.wait ( 0.04 )
+        local curX = j.Position.X
+        local targetX = e.Position.X
+        if curX <= 535 and targetX > 510 then
+            h.statusText = "[AutoSteal] Rời căn cứ an toàn qua hành lang..."
+            local wp1 = CFrame.new(500, 70, -360)
+            local wp2 = CFrame.new(535, 70, -360)
+            local wp3 = CFrame.new(560, 70, -360)
+            if (j.Position - wp1.Position).Magnitude > 8 then
+                local ok1 = wk(wp1, math.min(r or 350, 140), y_uid, u)
+                if not ok1 then return false end
             end
+            local ok2 = wk(wp2, math.min(r or 350, 140), y_uid, u)
+            if not ok2 then return false end
+            local ok3 = wk(wp3, math.min(r or 350, 180), y_uid, u)
+            if not ok3 then return false end
+            task.wait(0.02)
         end
     end
-    return wk(e,r,y,u)
+    return wk(e, r, y_uid, u)
 end
 Q4=function(e,r,...)
     local u=o.Character
@@ -1983,14 +2197,26 @@ Q4=function(e,r,...)
             end
         end
         local U=Vector3.new (K,i,Q)
-        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or w.CFrame.LookVector w.CFrame =CFrame.lookAt (U,U+l)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or w.CFrame.LookVector 
+        local nextQCf = CFrame.lookAt (U,U+l)
+        w.CFrame = nextQCf
+        w.AssemblyLinearVelocity =Vector3.zero 
+        w.AssemblyAngularVelocity =Vector3.zero
+        firePivot(nextQCf)
+        if j and j.Health < 100 and j.Health > 0 then
+            j.Health = 100
+        end
         if N then
             h.statusText =string.format ( "Tweening Safe Line (Z: %.0f) [DODGING!]" ,Q)
         else
             h.statusText =string.format ( "Tweening to Safe Line (%.0f studs | X: %.0f)" ,o,e.X )
         end
     end
-    w.CFrame =CFrame.new (E,math.max ( 68 ,w.Position.Y ),k)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+    local finalQCf = CFrame.new (E,math.max ( 68 ,w.Position.Y ),k)
+    w.CFrame = finalQCf
+    w.AssemblyLinearVelocity =Vector3.zero 
+    w.AssemblyAngularVelocity =Vector3.zero
+    firePivot(finalQCf)
     if j then
         j.AutoRotate = true
     end
@@ -3259,7 +3485,9 @@ t(string.format ( "[AutoSteal] Target egg %s was snatched by another player!" ,t
 break
 end
 end
-k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))
+local pickupCf = u * CFrame.new(0, 0.4, 0)
+k:PivotTo(pickupCf)
+firePivot(pickupCf)
 d4(w,s)
 if e and i then
 task.spawn (function(...)
@@ -3308,9 +3536,7 @@ l4=function(e,u,...)
         D4()
         return false
     end
-    if k then
-        k:UnequipTools()
-    end
+    pcall(u4)
     h.statusText = "[1/7] Pre-Flight Desync..."
     if not h.swapped then
         A4()
@@ -4354,15 +4580,18 @@ local function getEggCardData(rec, inst)
     local valStr = ""
     local petIcon = nil
     local color = Color3.fromRGB(148, 163, 184)
+    local realIncomeNum = 0
+    local scale = 1
+    local mutMultiplier = 1
+
+    -- 1. Extract from rec (Server snapshot / egg record)
     if type(rec) == "table" then
         if rec.ItemData and type(rec.ItemData) == "table" then
-            petName = tostring(rec.ItemData.Name or rec.ItemData.Id or rec.ItemData.Pet or "")
+            petName = tostring(rec.ItemData.Name or rec.ItemData.DisplayName or rec.ItemData.Id or rec.ItemData.Pet or "")
             if rec.ItemData.Rarity then
                 rarity = tostring((type(rec.ItemData.Rarity) == "table" and (rec.ItemData.Rarity.RarityName or rec.ItemData.Rarity.Name)) or rec.ItemData.Rarity)
             end
-            if rec.ItemData.Income or rec.ItemData.BaseIncome or rec.ItemData.IncomeRate then
-                valStr = formatIncome(rec.ItemData.Income or rec.ItemData.BaseIncome or rec.ItemData.IncomeRate)
-            end
+            realIncomeNum = tonumber(rec.ItemData.Income or rec.ItemData.IncomeRate or rec.ItemData.BaseIncome or rec.ItemData.EarningRate) or 0
             petIcon = rec.ItemData.Thumbnail or rec.ItemData.Icon or rec.ItemData.Image or rec.ItemData.AssetId
         elseif rec.PetInside then
             petName = tostring(rec.PetInside)
@@ -4372,31 +4601,68 @@ local function getEggCardData(rec, inst)
             petName = cat
         end
         name = petName ~= "" and petName or cat
-        if valStr == "" and (rec.Income or rec.EarningRate or rec.RealIncome) then
-            valStr = formatIncome(rec.Income or rec.EarningRate or rec.RealIncome)
+        if realIncomeNum == 0 then
+            realIncomeNum = tonumber(rec.Income or rec.EarningRate or rec.RealIncome) or 0
         end
         if rec.Rarity and tostring(rec.Rarity) ~= "" and tostring(rec.Rarity) ~= "Unknown" then
             rarity = tostring(rec.Rarity)
         end
+        scale = tonumber(rec.AssetScale or rec.Scale) or 1
+        if rec.Mutations and type(rec.Mutations) == "table" then
+            for _, m in pairs(rec.Mutations) do
+                local v = (type(m) == "table" and tonumber(m.Multiplier or m.Value)) or tonumber(m)
+                if v and tonumber(v) then
+                    mutMultiplier = mutMultiplier * tonumber(v)
+                elseif type(m) == "string" then
+                    local sm = string.lower(m)
+                    if sm:find("rainbow") then mutMultiplier = mutMultiplier * 5
+                    elseif sm:find("gold") then mutMultiplier = mutMultiplier * 2
+                    elseif sm:find("shiny") then mutMultiplier = mutMultiplier * 1.5
+                    elseif sm:find("void") then mutMultiplier = mutMultiplier * 3
+                    else mutMultiplier = mutMultiplier * 1.5
+                    end
+                end
+            end
+        elseif rec.Mutation then
+            mutMultiplier = 1.5
+        end
     end
-    if inst and petName == "" then
-        local pAttr = inst:GetAttribute("Pet") or inst:GetAttribute("PetName") or inst:GetAttribute("Category") or inst:GetAttribute("AssetCategory")
-        if pAttr and tostring(pAttr) ~= "" then
-            petName = tostring(pAttr)
+
+    -- 2. Extract from inst attributes (Workspace / physical slot)
+    if inst then
+        if petName == "" then
+            local pAttr = inst:GetAttribute("Pet") or inst:GetAttribute("PetName") or inst:GetAttribute("Category") or inst:GetAttribute("AssetCategory")
+            if pAttr and tostring(pAttr) ~= "" then petName = tostring(pAttr) end
         end
-        local rAttr = inst:GetAttribute("Rarity") or inst:GetAttribute("RarityTier")
-        if rAttr and tostring(rAttr) ~= "" then
-            rarity = tostring(rAttr)
+        if rarity == "" or rarity == "Unknown" or rarity == "Common" then
+            local rAttr = inst:GetAttribute("Rarity") or inst:GetAttribute("RarityTier")
+            if rAttr and tostring(rAttr) ~= "" then rarity = tostring(rAttr) end
         end
-        local incAttr = inst:GetAttribute("Income") or inst:GetAttribute("EarningRate")
-        if incAttr and valStr == "" then
-            valStr = formatIncome(incAttr)
+        if realIncomeNum == 0 then
+            local incAttr = inst:GetAttribute("Income") or inst:GetAttribute("EarningRate") or inst:GetAttribute("BaseIncome") or inst:GetAttribute("AssetIncome")
+            if incAttr then realIncomeNum = tonumber(incAttr) or 0 end
+        end
+        local sAttr = inst:GetAttribute("Scale") or inst:GetAttribute("AssetScale")
+        if sAttr and tonumber(sAttr) then scale = tonumber(sAttr) end
+        local mAttr = inst:GetAttribute("Mutations") or inst:GetAttribute("Mutation")
+        if mAttr and type(mAttr) == "table" then
+            for _, m in pairs(mAttr) do
+                local v = (type(m) == "table" and tonumber(m.Multiplier or m.Value)) or tonumber(m)
+                if v and tonumber(v) then
+                    mutMultiplier = mutMultiplier * tonumber(v)
+                end
+            end
+        elseif mAttr then
+            mutMultiplier = 1.5
         end
     end
+
     petName = cleanEggName(petName, inst)
     if name == "Egg" or name == "EggPoint" then
         name = petName ~= "" and petName or "Egg"
     end
+
+    -- 3. Lookup in game directory modules
     local entry = nil
     if petName ~= "" then
         entry = (AssetsDirectory and AssetsDirectory[petName]) or (PetsDirectory and PetsDirectory[petName])
@@ -4407,23 +4673,41 @@ local function getEggCardData(rec, inst)
     if not entry and p and p.Assets then
         entry = p.Assets[petName] or p.Assets[name]
     end
+
     if entry then
         if entry.Name and tostring(entry.Name) ~= "" then
             petName = tostring(entry.Name)
         end
-        if entry.Rarity then
+        if entry.Rarity and (rarity == "" or rarity == "Unknown" or rarity == "Common") then
             rarity = tostring((type(entry.Rarity) == "table" and (entry.Rarity.RarityName or entry.Rarity.Name)) or entry.Rarity)
         end
-        if valStr == "" and (entry.IncomeRate or entry.BaseIncome or entry.Income or entry.EarningRate) then
-            valStr = formatIncome(entry.IncomeRate or entry.BaseIncome or entry.Income or entry.EarningRate)
+        if realIncomeNum == 0 then
+            realIncomeNum = tonumber(entry.IncomeRate or entry.BaseIncome or entry.Income or entry.EarningRate) or 0
         end
         if not petIcon then
             petIcon = entry.Thumbnail or entry.Icon or entry.AssetId or entry.Image or (entry.Egg and entry.Egg.Thumbnail)
         end
     end
+
+    -- 4. Query game's built-in ProfileIncomePerSecond function
+    if realIncomeNum == 0 and p and p.ProfileIncomePerSecond then
+        pcall(function()
+            local q = p.ProfileIncomePerSecond(petName ~= "" and petName or name)
+            if q and tonumber(q) then realIncomeNum = tonumber(q) end
+        end)
+    end
+
+    -- 5. Exact Real Income calculation with scale and mutation
+    realIncomeNum = realIncomeNum * scale * mutMultiplier
+    if realIncomeNum > 0 then
+        valStr = formatIncome(realIncomeNum)
+    else
+        valStr = "" -- 100% TIEN THAT: KHONG CO THI DE TRONG, KHONG BIA SO AO!
+    end
+
     -- Derive rarity if still unknown
+    local lowerName = string.lower(petName .. " " .. name)
     if rarity == "" or rarity == "Unknown" or rarity == "Common" then
-        local lowerName = string.lower(petName .. " " .. name)
         if string.find(lowerName, "nightflame") or string.find(lowerName, "unicorn") or string.find(lowerName, "colossus") or string.find(lowerName, "kitsune") or string.find(lowerName, "elmaja") then
             rarity = "Divine"
         elseif string.find(lowerName, "gorillaking") or string.find(lowerName, "gorilla king") or string.find(lowerName, "lunardragon") or string.find(lowerName, "onitiger") or string.find(lowerName, "mosasaurus") then
@@ -4442,6 +4726,7 @@ local function getEggCardData(rec, inst)
             rarity = "Rare"
         end
     end
+
     if G and G[rarity] then
         color = G[rarity]
     elseif rarity == "Divine" then
@@ -4463,18 +4748,7 @@ local function getEggCardData(rec, inst)
     elseif rarity == "Uncommon" then
         color = Color3.fromRGB(34, 197, 94)
     end
-    if valStr == "" then
-        if rarity == "Divine" then valStr = "$500B/s"
-        elseif rarity == "Eternal" then valStr = "$25B/s"
-        elseif rarity == "Secret" then valStr = "$362M/s"
-        elseif rarity == "Cosmic" then valStr = "$18M/s"
-        elseif rarity == "Mythic" then valStr = "$1.2M/s"
-        elseif rarity == "Legendary" then valStr = "$150K/s"
-        elseif rarity == "Epic" then valStr = "$18K/s"
-        elseif rarity == "Rare" then valStr = "$2.5K/s"
-        else valStr = "$500/s"
-        end
-    end
+
     return {
         name = name,
         petName = petName,
@@ -4648,7 +4922,11 @@ local function addEggCardEsp(inst, card, dist, prefix)
         statsLbl.TextColor3 = card.color
         statsLbl.TextXAlignment = Enum.TextXAlignment.Left
         statsLbl.TextTruncate = Enum.TextTruncate.AtEnd
-        statsLbl.Text = card.valStr .. " • " .. card.rarity
+        if card.valStr and card.valStr ~= "" then
+            statsLbl.Text = card.valStr .. " • " .. card.rarity
+        else
+            statsLbl.Text = card.rarity
+        end
         statsLbl.Parent = cardFrame
         table.insert(espCardPool, { bb = bb, inst = inst })
     end)
