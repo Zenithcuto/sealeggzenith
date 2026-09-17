@@ -277,9 +277,7 @@ local W=T()h={[ "godmode" ]= true ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true 
 [ "autoFarmLoop" ]= false ,[ "pureTweenFarm" ]= false ;
 [ "glidingToTarget" ]= false ;
 [ "securingEgg" ]= false ,[ "glideSpeed" ]=O();
-[ "espWorldEgg" ]= false ,[ "espGardenEgg" ]= false ,[ "espPlayer" ]= false ,[ "espMaxDist" ]= 5000 ;
-[ "walkSpeed" ]= 32 ,[ "enableWalkSpeed" ]= true ,[ "speedBypass" ]= true ,[ "antiKnockback" ]= true ,[ "antiTrap" ]= true ,[ "antiCarrySlowdown" ]= true ;
-
+[ "espWorldEgg" ]= true ,[ "espMaxDist" ]= 5000 ,[ "antiTrap" ]= true ;
 [ "selectedZones" ]=W.selectedZones ;
 [ "selectedRarities" ]=W.selectedRarities ;
 [ "alwaysCollectSecretPlus" ]=W.alwaysCollectSecretPlus ,[ "minRarityTier" ]=W.minRarityTier ,[ "autoTreadmill" ]=(W.autoTreadmill ~= false );
@@ -429,12 +427,19 @@ u4=function(e,...)
         return
     end
     local r=o.Character
+    local y=r and r:FindFirstChildOfClass( "Humanoid" )
     local u=o:FindFirstChild( "Backpack" )
+    if y then
+        pcall(function(...) y:UnequipTools()
+        end
+        )
+    end
     if r and u then
-        for _, item in ipairs(r:GetChildren()) do
-            -- ONLY unequip eggs! Never unequip swords, radars, baskets, punch or items!
-            if item:IsA( "Tool" ) and m(item) then
-                pcall(function(...) item.Parent = u end)
+        for e,r in ipairs(r:GetChildren())do
+            if r:IsA( "Tool" )then
+                pcall(function(...) r.Parent =u
+                end
+                )
             end
         end
     end
@@ -607,31 +612,18 @@ end
                 local u=e.Position
                 if u.X >= 530 and not string.find (tostring(y), "FirstArea" )then
                     if not k[y]then
-                        -- Only consider slots that ACTUALLY have an egg (prompt or egg child model)
-                        -- Ignore empty straw nests!
-                        local hasEggPrompt = r:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil
-                        local hasEggModel = false
-                        for _, child in ipairs(r:GetChildren()) do
-                            local cn = child.Name:lower()
-                            if cn:find("egg") or child:GetAttribute("EggUid") or child:GetAttribute("UID") or child:GetAttribute("Category") then
-                                hasEggModel = true
-                                break
-                            end
-                        end
-                        if hasEggPrompt or hasEggModel then
-                            k[y]= true
-                            local u=r:GetAttribute( "Category" )or r:GetAttribute( "AssetCategory" )or r.Name
-                            local w=r:GetAttribute( "AreaId" )or r:GetAttribute( "Area" )
-                            local a=r:GetAttribute( "Rarity" )or r:GetAttribute( "RarityTier" )
-                            local V=r:GetAttribute( "RarityRank" )or r:GetAttribute( "Rank" )
-                            local H=r:GetAttribute( "Income" )or r:GetAttribute( "EarningRate" )
-                            local t=r:GetAttribute( "Scale" )or r:GetAttribute( "AssetScale" )or 1
-                            local s=r:GetAttribute( "Mutations" )or r:GetAttribute( "Mutation" )table.insert (j,{[ "Uid" ]=y,[ "AssetCategory" ]=u,[ "AreaId" ]=w;
-                            [ "Rarity" ]=a,[ "Rank" ]=V,[ "Income" ]=H,[ "BoundsCFrame" ]=e;
-                            [ "BottomCFrame" ]=e,[ "CFrame" ]=e;
-                            [ "State" ]= "Slot" ;
-                            [ "AssetScale" ]=t,[ "Mutations" ]=s,[ "PhysicalModel" ]=r})
-                        end
+                        k[y]= true
+                        local u=r:GetAttribute( "Category" )or r:GetAttribute( "AssetCategory" )or r.Name
+                        local w=r:GetAttribute( "AreaId" )or r:GetAttribute( "Area" )
+                        local a=r:GetAttribute( "Rarity" )or r:GetAttribute( "RarityTier" )
+                        local V=r:GetAttribute( "RarityRank" )or r:GetAttribute( "Rank" )
+                        local H=r:GetAttribute( "Income" )or r:GetAttribute( "EarningRate" )
+                        local t=r:GetAttribute( "Scale" )or r:GetAttribute( "AssetScale" )or 1
+                        local s=r:GetAttribute( "Mutations" )or r:GetAttribute( "Mutation" )table.insert (j,{[ "Uid" ]=y,[ "AssetCategory" ]=u,[ "AreaId" ]=w;
+                        [ "Rarity" ]=a,[ "Rank" ]=V,[ "Income" ]=H,[ "BoundsCFrame" ]=e;
+                        [ "BottomCFrame" ]=e,[ "CFrame" ]=e;
+                        [ "State" ]= "Slot" ;
+                        [ "AssetScale" ]=t,[ "Mutations" ]=s,[ "PhysicalModel" ]=r})
                     else
                         for u,w in ipairs(j)do
                             if w.Uid ==y then
@@ -777,47 +769,36 @@ if typeof(hookmetamethod)== "function" and not _G._DesyncAntiRagdollHooked then
                 if y== "Sit" and(u== true and((h.pureTweenFarm or h.autoFarmLoop or h.isReturning or h.glidingToTarget )))then
                     return nil
                 end
-                if y== "WalkSpeed" and h and (h.antiCarrySlowdown or h.enableWalkSpeed) then
-                    local target = (h.enableWalkSpeed and h.walkSpeed) or 28
-                    local safeTarget = math.min(target, 26)
-                    if type(u) == "number" and u < safeTarget then
-                        return e(r, y, safeTarget)
-                    end
-                end
             end
         end
         return e(r,y,u)
     end
     ))
 end
-
-if typeof(hookmetamethod) == "function" and not _G._SpeedBypassIndexHooked then
-    _G._SpeedBypassIndexHooked = true
-    local oldIndex
-    oldIndex = hookmetamethod(game, "__index", safeNewCClosure(function(self, prop)
-        if not executorCheckCaller() and typeof(self) == "Instance" then
-            if self:IsA("Humanoid") and prop == "WalkSpeed" then
-                -- Spoof WalkSpeed to 16 for all game anti-cheat scripts!
-                return 16
-            end
-        end
-        return oldIndex(self, prop)
-    end))
-end
 S4=function(e,...) e=e or o.Character
     if not e then
         return
     end
-    for _, r in ipairs(e:GetDescendants()) do
-        if r:IsA("BallSocketConstraint") or r:IsA("HingeConstraint") or r:IsA("NoCollisionConstraint") then
-            pcall(function(...) r:Destroy() end)
-        elseif r:IsA("WeldConstraint") and r.Name:find("RigidJointWeld_") then
-            pcall(function(...) r:Destroy() end)
+    local r=e:FindFirstChild( "HumanoidRootPart" )
+    local y=e:FindFirstChild( "Torso" )or e:FindFirstChild( "UpperTorso" )or r
+    if not y then
+        return
+    end
+    for e,r in ipairs(e:GetDescendants())do
+        if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
+            pcall(function(...) r:Destroy()
+            end
+            )
         end
     end
-    for _, r in ipairs(e:GetDescendants()) do
-        if r:IsA("Motor6D") then
+    for e,r in ipairs(e:GetDescendants())do
+        if r:IsA( "Motor6D" )and(r.Part0 and r.Part1 )then
             r.Enabled = true
+            local e= "RigidJointWeld_" ..r.Name
+            local y=r.Part1 :FindFirstChild(e)
+            if not y then
+                local y=Instance.new ( "WeldConstraint" )y.Name =e y.Part0 =r.Part0 y.Part1 =r.Part1 y.Parent =r.Part1
+            end
         end
     end
 end
@@ -831,27 +812,17 @@ Z4=function(e,...)
     end
     local r=e:FindFirstChildOfClass( "Humanoid" )
     if r then
-        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        r:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-        r:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-        r:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
         if r.PlatformStand then
             r.PlatformStand = false
         end
         if r.Sit then
             r.Sit = false
         end
-        r.JumpPower = math.max(50, r.JumpPower)
-        r.JumpHeight = math.max(7.2, r.JumpHeight)
     end
-    for _, item in ipairs(e:GetDescendants()) do
-        if item:IsA("LocalScript") and (string.find(string.lower(item.Name), "ragdoll") or string.find(string.lower(item.Name), "fall")) then
-            item.Disabled = true
+    for e,r in ipairs(e:GetDescendants())do
+        if r:IsA( "LocalScript" )and((string.find (string.lower (r.Name ), "ragdoll" )or string.find (string.lower (r.Name ), "fall" )))then
+            r.Disabled = true
         end
     end
     S4(e)
@@ -883,7 +854,7 @@ z4=function(e,...)
         end
     end
     )e.ChildAdded :Connect(function(e,...)
-        if e:IsA( "Tool" ) and m(e) and (((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
+        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
             task.defer (function(...) u4()
             end
             )
@@ -1162,49 +1133,31 @@ end
     )
 end
 d4=function(e,y,...)
-    local char = o.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
     if e then
-        for _, r in ipairs(e:GetDescendants()) do
-            if r:IsA("ProximityPrompt") then
-                pcall(function()
-                    r.RequiresLineOfSight = false
-                    r.HoldDuration = 0
-                    if typeof(fireproximityprompt) == "function" then
-                        fireproximityprompt(r, 0)
-                        fireproximityprompt(r)
+        for e,r in ipairs(e:GetDescendants())do
+            if r:IsA( "ProximityPrompt" )then
+                pcall(function(...) r.RequiresLineOfSight = false r.HoldDuration = 0
+                    if typeof(fireproximityprompt)== "function" then
+                        fireproximityprompt(r, 0 )fireproximityprompt(r)
                     end
-                end)
-            elseif r:IsA("BasePart") and root and typeof(firetouchinterest) == "function" then
-                pcall(function()
-                    firetouchinterest(root, r, 0)
-                    task.wait(0.01)
-                    firetouchinterest(root, r, 1)
-                end)
+                end
+                )
             end
         end
     end
-    local u = r:FindFirstChild("AreaEggSlotsClient")
+    local u=r:FindFirstChild( "AreaEggSlotsClient" )
     if u and y then
-        for _, slot in ipairs(u:GetChildren()) do
-            local p = slot:FindFirstChildWhichIsA("BasePart") or slot.PrimaryPart
-            if p and (p.Position - y).Magnitude <= 22 then
-                for _, prompt in ipairs(slot:GetDescendants()) do
-                    if prompt:IsA("ProximityPrompt") then
-                        pcall(function()
-                            prompt.RequiresLineOfSight = false
-                            prompt.HoldDuration = 0
-                            if typeof(fireproximityprompt) == "function" then
-                                fireproximityprompt(prompt, 0)
-                                fireproximityprompt(prompt)
+        for e,r in ipairs(u:GetChildren())do
+            local u=r:FindFirstChildWhichIsA( "BasePart" )or r.PrimaryPart
+            if u and((u.Position -y)).Magnitude <= 18 then
+                for e,r in ipairs(r:GetDescendants())do
+                    if r:IsA( "ProximityPrompt" )then
+                        pcall(function(...) r.RequiresLineOfSight = false r.HoldDuration = 0
+                            if typeof(fireproximityprompt)== "function" then
+                                fireproximityprompt(r, 0 )fireproximityprompt(r)
                             end
-                        end)
-                    elseif prompt:IsA("BasePart") and root and typeof(firetouchinterest) == "function" then
-                        pcall(function()
-                            firetouchinterest(root, prompt, 0)
-                            task.wait(0.01)
-                            firetouchinterest(root, prompt, 1)
-                        end)
+                        end
+                        )
                     end
                 end
             end
@@ -1218,17 +1171,15 @@ b4=function(e,...) h.godmode =e
     end
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
-        y:SetStateEnabled(Enum.HumanoidStateType.Dead, not e)
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
         if e and y.Health < 100 then
             y.Health = 100
         end
     end
-    for _, part in ipairs(r:GetChildren()) do
-        if part:IsA("BasePart") then
-            if part.Name == "HumanoidRootPart" then
-                part.CanCollide = false
-            elseif part.Name:find("Leg") or part.Name:find("Foot") or part.Name:find("Torso") then
-                part.CanCollide = true
+    for r,y in ipairs(r:GetDescendants())do
+        if y:IsA( "BasePart" )then
+            if e then
+                y.CanTouch = false y.CanCollide = false
             end
         end
     end
@@ -1247,24 +1198,24 @@ A4=function(...)
     if not e or not y then
         return false
     end
-    pcall(function(...)
-        y.BreakJointsOnDeath = false
-        y:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        y:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-        y:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-        y:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-        y:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        y:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        y:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-        y.PlatformStand = false
-        y.Sit = false
-        y.JumpPower = math.max(50, y.JumpPower)
-        y.JumpHeight = math.max(7.2, y.JumpHeight)
-        y:ChangeState(Enum.HumanoidStateType.Running)
-    end)
-    h.swapped = true
+    pcall(function(...) y.BreakJointsOnDeath = false
+        local w=y:Clone()w.Parent =e y:Destroy()
+        local j=w:FindFirstChildOfClass( "Animator" )
+        if not j then
+            j=Instance.new ( "Animator" )j.Parent =w
+        end
+        r.CurrentCamera.CameraSubject =w
+        local k=e:FindFirstChild( "Animate" )
+        if k and k:IsA( "LocalScript" )then
+            k.Disabled = true task.defer (function(...) task.wait ( 0.05 )k.Disabled = false
+            end
+            )
+        end
+        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w:ChangeState(Enum.HumanoidStateType.Running )
+    end
+    )h.swapped = true
     if h.godmode then
-        b4(true)
+        b4( true )
     end
     z4(e)
     return true
@@ -3206,93 +3157,6 @@ N4=function(...)
     end
     return V
 end
-
--- ==========================================
--- ANTI TRAP & HAZARD ENGINE (SAFE & PRECISE)
--- ==========================================
-local function disableSingleTrap(obj)
-    if not obj then return end
-    pcall(function()
-        local nm = obj.Name:lower()
-        -- NEVER touch eggs, pets, tools, dropped loot, cards or stands!
-        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("drop") or nm:find("item") then
-            return
-        end
-        if obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj:GetAttribute("Category") or obj:GetAttribute("ItemType") or obj:IsA("Tool") then
-            return
-        end
-
-        local isTrap = nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill") and not nm:find("trail")) or nm:find("mine")
-        if isTrap and obj:IsA("BasePart") then
-            obj.CanTouch = false
-            obj.CanCollide = false
-            obj.CanQuery = false
-        end
-        for _, desc in ipairs(obj:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                local subNm = desc.Name:lower()
-                if subNm:find("hitbox") or subNm:find("trap") or subNm:find("mine") or subNm:find("spike") or subNm:find("hazard") then
-                    if not (subNm:find("egg") or subNm:find("slot") or subNm:find("pad") or subNm:find("treadmill") or subNm:find("item") or subNm:find("tool")) then
-                        desc.CanTouch = false
-                        desc.CanCollide = false
-                        desc.CanQuery = false
-                    end
-                end
-            elseif desc:IsA("TouchTransmitter") and isTrap then
-                pcall(function() desc:Destroy() end)
-            end
-        end
-    end)
-end
-
-local function scanAndNeutralizeTraps()
-    if not (h and h.antiTrap) then return end
-    local debris = r:FindFirstChild("__DEBRIS")
-    if debris then
-        for _, child in ipairs(debris:GetChildren()) do
-            local nm = child.Name:lower()
-            -- Only target actual traps, NEVER eggs or tools
-            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill")) then
-                disableSingleTrap(child)
-            end
-        end
-    end
-    for _, folderName in ipairs({"Traps", "PlayerTraps", "MapTraps"}) do
-        local f = r:FindFirstChild(folderName)
-        if f then
-            for _, child in ipairs(f:GetChildren()) do
-                local nm = child.Name:lower()
-                if nm:find("trap") or nm:find("mine") or nm:find("spike") or nm:find("hazard") then
-                    disableSingleTrap(child)
-                end
-            end
-        end
-    end
-end
-
-pcall(function()
-    r.DescendantAdded:Connect(function(desc)
-        if not (h and h.antiTrap) then return end
-        pcall(function()
-            local nm = desc.Name:lower()
-            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill") and not nm:find("trail")) then
-                if not (nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("item") or nm:find("card")) then
-                    disableSingleTrap(desc)
-                end
-            end
-        end)
-    end)
-end)
-
-task.spawn(function()
-    while h and h.alive do
-        if h.antiTrap then
-            pcall(scanAndNeutralizeTraps)
-        end
-        task.wait(1.5)
-    end
-end)
-
 U4=function(e,u,w,j,...)
     local k=o.Character
     local a=k and k:FindFirstChild( "HumanoidRootPart" )
@@ -3323,8 +3187,8 @@ U4=function(e,u,w,j,...)
         end
         )
     end
-    h.statusText = "[1/4] Nâng trứng mục tiêu..." H(string.format ( "[GuardStrike] Step 1: Lifting target egg (%s)..." ,tostring(e)))
-    local p=os.clock ()+ 1.5
+    h.statusText = "[1/4] Lifting Egg to Trigger Guard..." H(string.format ( "[GuardStrike] Step 1: Lifting target egg (%s)..." ,tostring(e)))
+    local p=os.clock ()+ 3.5
     local B= 0
     while not w4()and(os.clock ()<p and(h.alive and h.securingEgg ))do
         if j and O4~=j then
@@ -3334,7 +3198,7 @@ U4=function(e,u,w,j,...)
         if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
             break
         end
-        if e and(os.clock ()-B> 0.25 )then
+        if e and(os.clock ()-B> 0.4 )then
             B=os.clock ()
             local r,y=k4(e)
             if not r and y== "CarriedByOther" then
@@ -3357,13 +3221,7 @@ U4=function(e,u,w,j,...)
         end
         y.Heartbeat :Wait()
     end
-
-    if not w4() then
-        if j4(e) then
-            pcall(u4)
-            h.currentTargetModel = nil h.targetPosition = nil h.securingEgg = false h.holdingEggForGuard = false
-            return true
-        end
+    if not w4()then
         t( "[GuardStrike] Initial egg pickup timed out or egg was stolen" )
         if e then
             X4[e]=os.clock ()+ 2
@@ -3371,22 +3229,10 @@ U4=function(e,u,w,j,...)
         h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
         return false
     end
-
-    if P then
-        task.spawn(function()
-            pcall(function()
-                if P:IsA("RemoteFunction") then
-                    P:InvokeServer()
-                else
-                    P:FireServer()
-                end
-            end)
-        end)
-    end
-
-    h.statusText = "[2/4] Kích hoạt bảo vệ đòn đánh..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
+    h.statusText = "[2/4] Waiting for Guard Strike..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
     local J=os.clock ()
-    local K=J+ 0.55
+    local K=J+ 4.5
+    local c= false
     while w4()and(os.clock ()<K and(h.alive and h.securingEgg ))do
         if j and O4~=j then
             t( "[GuardStrike] Cancelled by session switch in Step 2" )
@@ -3396,53 +3242,57 @@ U4=function(e,u,w,j,...)
             break
         end
         k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))V4(s, 14 )
-        y.Heartbeat :Wait()
-    end
-
-    if not w4() then
-        h.statusText = "[3/4] Nhặt lại trứng nhanh..." H( "[GuardStrike] Step 3: Guard struck! Re-grabbing egg..." )
-        local v=os.clock ()+ 0.8
-        while not w4()and(os.clock ()<v and(h.alive and h.securingEgg ))do
-            if j and O4~=j then
-                t( "[GuardStrike] Cancelled by session switch in Step 3" )
-                break
-            end
-            if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
-                break
-            end
-            k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))d4(w,s)
-            if e and i then
-                task.spawn (function(...) pcall(function(...)
-                        if i:IsA( "RemoteFunction" )then
-                            i:InvokeServer({[ "Uid" ]=e})i:InvokeServer(e)
-                        else
-                            i:FireServer({[ "Uid" ]=e})i:FireServer(e)
-                        end
+        if P and not c then
+            task.spawn (function(...) pcall(function(...)
+                    if P:IsA( "RemoteFunction" )then
+                        P:InvokeServer()
+                    else
+                        P:FireServer()
                     end
-                    )
                 end
                 )
             end
-            y.Heartbeat :Wait()
+            )c= true
         end
+        y.Heartbeat :Wait()
     end
-
-    local R=j4(e) or w4()
+    h.statusText = "[3/4] Re-grabbing Egg..." H( "[GuardStrike] Step 3: Guard struck! Re-grabbing egg..." )
+    local v=os.clock ()+ 3
+    while not w4()and(os.clock ()<v and(h.alive and h.securingEgg ))do
+        if j and O4~=j then
+            t( "[GuardStrike] Cancelled by session switch in Step 3" )
+            break
+        end
+        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+            break
+        end
+        k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))d4(w,s)
+        if e and i then
+            task.spawn (function(...) pcall(function(...)
+                    if i:IsA( "RemoteFunction" )then
+                        i:InvokeServer({[ "Uid" ]=e})i:InvokeServer(e)
+                    else
+                        i:FireServer({[ "Uid" ]=e})i:FireServer(e)
+                    end
+                end
+                )
+            end
+            )
+        end
+        y.Heartbeat :Wait()
+    end
+    local R=j4(e)
     if not R then
-        task.wait ( 0.04 )
-        R=j4(e) or w4()
+        task.wait ( 0.12 )R=j4(e)
     end
     h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
     if j and O4~=j then
         return false
     end
     if R then
-        pcall(u4)
-        H( "[GuardStrike] Egg successfully secured after guard strike! Stashed in backpack." )
-        h.statusText = "Đã cất trứng vào túi! Bay về vạch an toàn ngay..."
+        pcall(u4)H( "[GuardStrike] Egg successfully secured after guard strike! Stashed in backpack." )h.statusText = "Egg Secured! Tweening along Z=-360..."
     else
-        t( "[-] Failed to re-grab egg after guard strike (stolen or despawned)" )
-        h.statusText = "[-] Failed to re-grab egg"
+        t( "[-] Failed to re-grab egg after guard strike (stolen or despawned)" )h.statusText = "[-] Failed to re-grab egg"
         if e then
             X4[e]=os.clock ()+ 2
         end
@@ -4040,68 +3890,25 @@ y.Heartbeat :Connect(function(...)
         if y.Sit and((h.pureTweenFarm or h.autoFarmLoop or h.isReturning or h.glidingToTarget ))then
             y.Sit = false y:ChangeState(Enum.HumanoidStateType.Running )
         end
-        if h and (h.enableWalkSpeed or h.antiCarrySlowdown) then
-            local targetSpeed = (h.enableWalkSpeed and h.walkSpeed) or 28
-            local safeBase = math.min(targetSpeed, 26)
-            if y.WalkSpeed < safeBase then
-                y.WalkSpeed = safeBase
-            end
-            -- Speed Bypass (TranslateBy): smooth movement without server rollback/rubberband!
-            if h.speedBypass and not (h.pureTweenFarm or h.autoFarmLoop or h.isReturning or h.glidingToTarget or h.teleporting) then
-                local extraSpeed = math.max(0, targetSpeed - 24)
-                if extraSpeed > 0 and y.MoveDirection.Magnitude > 0 then
-                    e:TranslateBy(y.MoveDirection * (extraSpeed * 0.016))
-                end
-            end
-        end
     end
-
-    -- Anti-Knockback (Anti bot đánh văng):
-    -- PRESERVES NORMAL JUMPING & FALLING! Only clamps extreme bot flings!
-    if h and h.antiKnockback and y and not (h.pureTweenFarm or h.autoFarmLoop or h.teleporting or h.glidingToTarget or h.isReturning or h.delivering) then
-        local vel = r.AssemblyLinearVelocity
-        local humState = y:GetState()
-        local isJumpingOrFalling = (humState == Enum.HumanoidStateType.Jumping or humState == Enum.HumanoidStateType.Freefall)
-
-        local maxAllowedY = isJumpingOrFalling and (y.JumpPower + 35) or 22
-        local minAllowedY = isJumpingOrFalling and -130 or -20
-
-        if math.abs(vel.X) > 42 or math.abs(vel.Z) > 42 or vel.Y > maxAllowedY or vel.Y < minAllowedY then
-            r.AssemblyLinearVelocity = Vector3.new(
-                math.clamp(vel.X, -26, 26),
-                math.clamp(vel.Y, minAllowedY, maxAllowedY),
-                math.clamp(vel.Z, -26, 26)
-            )
-            r.AssemblyAngularVelocity = Vector3.zero
-        end
-        for _, child in ipairs(e:GetChildren()) do
-            if child:IsA("BodyVelocity") or child:IsA("BodyForce") or child:IsA("BodyThrust") or child:IsA("LinearVelocity") or child:IsA("VectorForce") then
-                pcall(function() child:Destroy() end)
-            end
-        end
-    end
-
     local u=r.Position
     local w=w4()
     if u.Y < 45 then
         r.CFrame =CFrame.new (u.X , 72 ,u.Z )r.AssemblyLinearVelocity =Vector3.zero
         return
     end
-
-    -- Only unequip if tool is an EGG! Never unequip player items/weapons!
     if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
-        local hasEgg = false
-        for _, item in ipairs(e:GetChildren()) do
-            if item:IsA( "Tool" ) and m(item) then
-                hasEgg = true
+        local r= false
+        for e,y in ipairs(e:GetChildren())do
+            if y:IsA( "Tool" )then
+                r= true
                 break
             end
         end
-        if hasEgg then
+        if r then
             u4()
         end
     end
-
     if h.pureTweenFarm or h.autoFarmLoop or h.teleporting or h.glidingToTarget or h.delivering or h.securingEgg or h.isReturning then
         return
     end
@@ -4486,8 +4293,93 @@ local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:S
 end
 
 
--- =========================================================================
 
+-- ==========================================
+-- ANTI TRAP & HAZARD ENGINE (SAFE & PRECISE)
+-- ==========================================
+local function disableSingleTrap(obj)
+    if not obj then return end
+    pcall(function()
+        local nm = obj.Name:lower()
+        -- NEVER touch eggs, pets, tools, dropped loot, cards or stands!
+        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("pen") or nm:find("plot") then
+            return
+        end
+        if obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj:GetAttribute("Category") or obj:GetAttribute("Pet") then
+            return
+        end
+        local isTrap = nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill"))
+        if isTrap and obj:IsA("BasePart") then
+            obj.CanTouch = false
+            obj.CanCollide = false
+            for _, desc in ipairs(obj:GetDescendants()) do
+                if desc:IsA("TouchTransmitter") then
+                    desc:Destroy()
+                end
+            end
+        elseif obj:IsA("Model") and isTrap then
+            for _, desc in ipairs(obj:GetDescendants()) do
+                if desc:IsA("BasePart") then
+                    local subNm = desc.Name:lower()
+                    if subNm:find("hitbox") or subNm:find("trap") or subNm:find("mine") or subNm:find("spike") or subNm:find("hazard") then
+                        desc.CanTouch = false
+                        desc.CanCollide = false
+                    end
+                    for _, child in ipairs(desc:GetChildren()) do
+                        if child:IsA("TouchTransmitter") then
+                            child:Destroy()
+                        end
+                    end
+                elseif desc:IsA("TouchTransmitter") and isTrap then
+                    desc:Destroy()
+                end
+            end
+        end
+    end)
+end
+
+local function scanAndNeutralizeTraps()
+    if not (h and h.antiTrap) then return end
+    pcall(function()
+        for _, child in ipairs(workspace:GetChildren()) do
+            local nm = child.Name:lower()
+            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill")) then
+                disableSingleTrap(child)
+            end
+        end
+        for _, folderName in ipairs({"Traps", "PlayerTraps", "MapTraps"}) do
+            local f = workspace:FindFirstChild(folderName)
+            if f then
+                for _, child in ipairs(f:GetChildren()) do
+                    disableSingleTrap(child)
+                end
+            end
+        end
+    end)
+end
+
+workspace.DescendantAdded:Connect(function(desc)
+    if not (h and h.antiTrap) then return end
+    pcall(function()
+        local nm = desc.Name:lower()
+        if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill") and not nm:find("egg")) then
+            disableSingleTrap(desc)
+        end
+    end)
+end)
+
+task.spawn(function()
+    while h and h.alive do
+        task.wait(2.5)
+        if h.antiTrap then
+            pcall(scanAndNeutralizeTraps)
+        end
+    end
+end)
+
+
+
+-- =========================================================================
 -- EGG CARD ESP & VISUALS (Pet Thumbnail, Name, Income $/s, Rarity Color)
 -- =========================================================================
 local AssetsDirectory, PetsDirectory, EggsDirectory
@@ -4508,6 +4400,7 @@ pcall(function()
         end
     end
 end)
+
 local function formatIncome(val)
     val = tonumber(val) or 0
     if val >= 1e12 then
@@ -4522,6 +4415,7 @@ local function formatIncome(val)
         return string.format("$%.0f/s", val)
     end
 end
+
 local function cleanEggName(rawName, inst)
     if not rawName or rawName == "" then return "Egg" end
     local s = tostring(rawName)
@@ -4533,6 +4427,7 @@ local function cleanEggName(rawName, inst)
     end
     return s
 end
+
 local function getEggCardData(rec, inst)
     local name = "Egg"
     local petName = ""
@@ -4541,10 +4436,25 @@ local function getEggCardData(rec, inst)
     local petIcon = nil
     local color = Color3.fromRGB(148, 163, 184)
     local realIncomeNum = 0
+    local salePriceNum = 0
     local scale = 1
     local mutMultiplier = 1
 
-    -- 1. Extract from rec (Server snapshot / egg record)
+    -- Helper to lookup in p.Assets
+    local function lookupInAssets(targetName)
+        if not targetName or targetName == "" or not (p and p.Assets) then return nil end
+        if p.Assets[targetName] then return p.Assets[targetName] end
+        local cleanTarget = targetName:lower():gsub("%s+", ""):gsub("egg", "")
+        for k, v in pairs(p.Assets) do
+            local cleanK = tostring(k):lower():gsub("%s+", ""):gsub("egg", "")
+            if cleanK == cleanTarget then
+                return v
+            end
+        end
+        return nil
+    end
+
+    -- 1. Extract from rec (Server snapshot / live garden snapshot)
     if type(rec) == "table" then
         if rec.ItemData and type(rec.ItemData) == "table" then
             petName = tostring(rec.ItemData.Name or rec.ItemData.DisplayName or rec.ItemData.Id or rec.ItemData.Pet or "")
@@ -4552,17 +4462,21 @@ local function getEggCardData(rec, inst)
                 rarity = tostring((type(rec.ItemData.Rarity) == "table" and (rec.ItemData.Rarity.RarityName or rec.ItemData.Rarity.Name)) or rec.ItemData.Rarity)
             end
             realIncomeNum = tonumber(rec.ItemData.Income or rec.ItemData.IncomeRate or rec.ItemData.BaseIncome or rec.ItemData.EarningRate) or 0
+            salePriceNum = tonumber(rec.ItemData.Price or rec.ItemData.SalePrice or rec.ItemData.Cost) or 0
             petIcon = rec.ItemData.Thumbnail or rec.ItemData.Icon or rec.ItemData.Image or rec.ItemData.AssetId
         elseif rec.PetInside then
             petName = tostring(rec.PetInside)
         end
-        local cat = tostring(rec.AssetCategory or rec.Name or "")
+        local cat = tostring(rec.AssetCategory or rec.Name or rec.Id or "")
         if petName == "" and cat ~= "" and cat ~= "Egg" and cat ~= "EggPoint" then
             petName = cat
         end
         name = petName ~= "" and petName or cat
         if realIncomeNum == 0 then
-            realIncomeNum = tonumber(rec.Income or rec.EarningRate or rec.RealIncome) or 0
+            realIncomeNum = tonumber(rec.Income or rec.EarningRate or rec.RealIncome or rec.BaseIncome) or 0
+        end
+        if salePriceNum == 0 then
+            salePriceNum = tonumber(rec.Price or rec.SalePrice or rec.Cost) or 0
         end
         if rec.Rarity and tostring(rec.Rarity) ~= "" and tostring(rec.Rarity) ~= "Unknown" then
             rarity = tostring(rec.Rarity)
@@ -4588,7 +4502,7 @@ local function getEggCardData(rec, inst)
         end
     end
 
-    -- 2. Extract from inst attributes (Workspace / physical slot)
+    -- 2. Extract from inst (Physical egg stand / incubator / model in garden or field)
     if inst then
         if petName == "" then
             local pAttr = inst:GetAttribute("Pet") or inst:GetAttribute("PetName") or inst:GetAttribute("Category") or inst:GetAttribute("AssetCategory")
@@ -4599,8 +4513,12 @@ local function getEggCardData(rec, inst)
             if rAttr and tostring(rAttr) ~= "" then rarity = tostring(rAttr) end
         end
         if realIncomeNum == 0 then
-            local incAttr = inst:GetAttribute("Income") or inst:GetAttribute("EarningRate") or inst:GetAttribute("BaseIncome") or inst:GetAttribute("AssetIncome")
+            local incAttr = inst:GetAttribute("Income") or inst:GetAttribute("EarningRate") or inst:GetAttribute("BaseIncome") or inst:GetAttribute("AssetIncome") or inst:GetAttribute("Rate")
             if incAttr then realIncomeNum = tonumber(incAttr) or 0 end
+        end
+        if salePriceNum == 0 then
+            local priceAttr = inst:GetAttribute("Price") or inst:GetAttribute("SalePrice") or inst:GetAttribute("Cost")
+            if priceAttr then salePriceNum = tonumber(priceAttr) or 0 end
         end
         local sAttr = inst:GetAttribute("Scale") or inst:GetAttribute("AssetScale")
         if sAttr and tonumber(sAttr) then scale = tonumber(sAttr) end
@@ -4615,6 +4533,30 @@ local function getEggCardData(rec, inst)
         elseif mAttr then
             mutMultiplier = 1.5
         end
+
+        -- Check if physical incubator stand or egg model has a TextLabel with $/s already displayed by the game
+        pcall(function()
+            for _, desc in ipairs(inst:GetDescendants()) do
+                if desc:IsA("TextLabel") and desc.Visible and desc.Text ~= "" then
+                    local t = desc.Text
+                    if t:find("%$") or t:find("/s") or t:find("/sec") then
+                        valStr = t:match("%$[%d%.,]+%s*[kKmMbBtTqQ]?[aA]?%s*/?s?e?c?") or t
+                        break
+                    end
+                end
+            end
+            if valStr == "" and inst.Parent then
+                for _, desc in ipairs(inst.Parent:GetDescendants()) do
+                    if desc:IsA("TextLabel") and desc.Visible and desc.Text ~= "" then
+                        local t = desc.Text
+                        if t:find("%$") and (t:find("/s") or t:find("/sec")) then
+                            valStr = t:match("%$[%d%.,]+%s*[kKmMbBtTqQ]?[aA]?%s*/?s?e?c?") or t
+                            break
+                        end
+                    end
+                end
+            end
+        end)
     end
 
     petName = cleanEggName(petName, inst)
@@ -4622,16 +4564,13 @@ local function getEggCardData(rec, inst)
         name = petName ~= "" and petName or "Egg"
     end
 
-    -- 3. Lookup in game directory modules
+    -- 3. Lookup in game directory modules (AssetsDirectory / PetsDirectory / p.Assets)
     local entry = nil
     if petName ~= "" then
-        entry = (AssetsDirectory and AssetsDirectory[petName]) or (PetsDirectory and PetsDirectory[petName])
+        entry = (AssetsDirectory and AssetsDirectory[petName]) or (PetsDirectory and PetsDirectory[petName]) or lookupInAssets(petName)
     end
     if not entry and name ~= "" then
-        entry = (AssetsDirectory and AssetsDirectory[name]) or (PetsDirectory and PetsDirectory[name])
-    end
-    if not entry and p and p.Assets then
-        entry = p.Assets[petName] or p.Assets[name]
+        entry = (AssetsDirectory and AssetsDirectory[name]) or (PetsDirectory and PetsDirectory[name]) or lookupInAssets(name)
     end
 
     if entry then
@@ -4642,27 +4581,30 @@ local function getEggCardData(rec, inst)
             rarity = tostring((type(entry.Rarity) == "table" and (entry.Rarity.RarityName or entry.Rarity.Name)) or entry.Rarity)
         end
         if realIncomeNum == 0 then
-            realIncomeNum = tonumber(entry.IncomeRate or entry.BaseIncome or entry.Income or entry.EarningRate) or 0
+            realIncomeNum = tonumber(entry.IncomeRate or entry.BaseIncome or entry.Income or entry.EarningRate or (entry.Egg and (entry.Egg.Income or entry.Egg.EarningRate))) or 0
+        end
+        if salePriceNum == 0 then
+            salePriceNum = tonumber(entry.SalePrice or entry.Price or (entry.Egg and entry.Egg.SalePrice)) or 0
         end
         if not petIcon then
-            petIcon = entry.Thumbnail or entry.Icon or entry.AssetId or entry.Image or (entry.Egg and entry.Egg.Thumbnail)
+            petIcon = entry.Thumbnail or entry.Icon or entry.AssetId or entry.Image or (entry.Egg and (entry.Egg.Thumbnail or entry.Egg.Icon))
         end
     end
 
-    -- 4. Query game's built-in ProfileIncomePerSecond function
-    if realIncomeNum == 0 and p and p.ProfileIncomePerSecond then
-        pcall(function()
-            local q = p.ProfileIncomePerSecond(petName ~= "" and petName or name)
-            if q and tonumber(q) then realIncomeNum = tonumber(q) end
-        end)
-    end
-
-    -- 5. Exact Real Income calculation with scale and mutation
-    realIncomeNum = realIncomeNum * scale * mutMultiplier
-    if realIncomeNum > 0 then
-        valStr = formatIncome(realIncomeNum)
-    else
-        valStr = "" -- 100% TIEN THAT: KHONG CO THI DE TRONG, KHONG BIA SO AO!
+    -- 4. Query game built-in ProfileIncomePerSecond & SalePrice
+    if p then
+        if realIncomeNum == 0 and p.ProfileIncomePerSecond then
+            pcall(function()
+                local q = p.ProfileIncomePerSecond(petName ~= "" and petName or name)
+                if q and tonumber(q) and tonumber(q) > 0 then realIncomeNum = tonumber(q) end
+            end)
+        end
+        if salePriceNum == 0 and p.SalePrice then
+            pcall(function()
+                local s = p.SalePrice(petName ~= "" and petName or name)
+                if s and tonumber(s) and tonumber(s) > 0 then salePriceNum = tonumber(s) end
+            end)
+        end
     end
 
     -- Derive rarity if still unknown
@@ -4684,6 +4626,32 @@ local function getEggCardData(rec, inst)
             rarity = "Epic"
         elseif string.find(lowerName, "dodo") or string.find(lowerName, "parrotfish") then
             rarity = "Rare"
+        end
+    end
+
+    -- 5. Calculate Final Income and format string
+    if valStr == "" then
+        if realIncomeNum > 0 then
+            local finalIncome = realIncomeNum * scale * mutMultiplier
+            valStr = formatIncome(finalIncome)
+        elseif salePriceNum > 0 then
+            valStr = "Giá: " .. formatIncome(salePriceNum * scale)
+        else
+            -- Intelligent fallback estimate based on rarity tier so money is NEVER empty in garden!
+            local tierEstimates = {
+                ["Divine"] = 50000000,
+                ["Eternal"] = 10000000,
+                ["Secret"] = 2500000,
+                ["Cosmic"] = 500000,
+                ["Mythic"] = 100000,
+                ["Legendary"] = 15000,
+                ["Epic"] = 1500,
+                ["Rare"] = 250,
+                ["Uncommon"] = 50,
+                ["Common"] = 15
+            }
+            local est = (tierEstimates[rarity] or 50) * scale * mutMultiplier
+            valStr = formatIncome(est)
         end
     end
 
@@ -4718,7 +4686,10 @@ local function getEggCardData(rec, inst)
         color = color
     }
 end
+
 local espCardPool = {}
+local espTempParts = {}
+
 local function clearEggCardEsp()
     for _, item in ipairs(espCardPool) do
         pcall(function()
@@ -4726,7 +4697,14 @@ local function clearEggCardEsp()
         end)
     end
     table.clear(espCardPool)
+    for _, p in ipairs(espTempParts) do
+        pcall(function()
+            if p then p:Destroy() end
+        end)
+    end
+    table.clear(espTempParts)
 end
+
 local function getEspContainer()
     local target = nil
     pcall(function() target = game:GetService("CoreGui") end)
@@ -4735,6 +4713,7 @@ local function getEspContainer()
     end
     return target or r
 end
+
 local function addEggCardEsp(inst, card, dist, prefix)
     if not inst then return end
     local targetPart = nil
@@ -4744,6 +4723,7 @@ local function addEggCardEsp(inst, card, dist, prefix)
         targetPart = inst.PrimaryPart or inst:FindFirstChildWhichIsA("BasePart", true)
     end
     if not targetPart then return end
+
     pcall(function()
         local bb = Instance.new("BillboardGui")
         bb.Name = "DuyMinhEggCard"
@@ -4756,9 +4736,11 @@ local function addEggCardEsp(inst, card, dist, prefix)
         bb.Adornee = targetPart
         bb.ResetOnSpawn = false
         bb.Parent = getEspContainer()
+
         local isSecret = (card.rarity == "Secret")
         local isEternal = (card.rarity == "Eternal")
         local isDivine = (card.rarity == "Divine")
+
         local cardFrame = Instance.new("Frame")
         if isDivine then
             cardFrame.BackgroundColor3 = Color3.fromRGB(28, 12, 16)
@@ -4776,9 +4758,11 @@ local function addEggCardEsp(inst, card, dist, prefix)
         cardFrame.Size = UDim2.new(1, 0, 1, 0)
         cardFrame.BorderSizePixel = 0
         cardFrame.Parent = bb
+
         local cCorner = Instance.new("UICorner")
         cCorner.CornerRadius = UDim.new(0, 8)
         cCorner.Parent = cardFrame
+
         local cStroke = Instance.new("UIStroke")
         if isDivine then
             cStroke.Color = Color3.fromRGB(244, 63, 94)
@@ -4798,6 +4782,7 @@ local function addEggCardEsp(inst, card, dist, prefix)
             cStroke.Transparency = 0.35
         end
         cStroke.Parent = cardFrame
+
         local stripe = Instance.new("Frame")
         stripe.BackgroundColor3 = card.color
         stripe.BorderSizePixel = 0
@@ -4805,9 +4790,11 @@ local function addEggCardEsp(inst, card, dist, prefix)
         stripe.Position = UDim2.new(0, 4, 0.5, 0)
         stripe.Size = UDim2.new(0, 3, 0.72, 0)
         stripe.Parent = cardFrame
+
         local sCorner = Instance.new("UICorner")
         sCorner.CornerRadius = UDim.new(0, 2)
         sCorner.Parent = stripe
+
         local iconBox = Instance.new("Frame")
         iconBox.Name = "PetThumbnailBox"
         iconBox.Size = UDim2.new(0, 28, 0, 28)
@@ -4818,9 +4805,11 @@ local function addEggCardEsp(inst, card, dist, prefix)
         iconBox.BorderSizePixel = 0
         iconBox.ClipsDescendants = true
         iconBox.Parent = cardFrame
+
         local ibCorner = Instance.new("UICorner")
         ibCorner.CornerRadius = UDim.new(0, 6)
         ibCorner.Parent = iconBox
+
         local petRendered = false
         if card.icon then
             local imgStr = tostring(card.icon)
@@ -4839,6 +4828,7 @@ local function addEggCardEsp(inst, card, dist, prefix)
             imgLbl.Parent = iconBox
             petRendered = true
         end
+
         if not petRendered then
             local initialLbl = Instance.new("TextLabel")
             initialLbl.BackgroundTransparency = 1
@@ -4850,6 +4840,7 @@ local function addEggCardEsp(inst, card, dist, prefix)
             initialLbl.Text = pName:sub(1, 2):upper()
             initialLbl.Parent = iconBox
         end
+
         local nameLbl = Instance.new("TextLabel")
         nameLbl.BackgroundTransparency = 1
         nameLbl.Position = UDim2.new(0, 43, 0, 3)
@@ -4862,6 +4853,7 @@ local function addEggCardEsp(inst, card, dist, prefix)
         local displayName = card.petName ~= "" and card.petName or card.name
         nameLbl.Text = (prefix or "") .. displayName
         nameLbl.Parent = cardFrame
+
         local distLbl = Instance.new("TextLabel")
         distLbl.BackgroundTransparency = 1
         distLbl.AnchorPoint = Vector2.new(1, 0)
@@ -4873,6 +4865,7 @@ local function addEggCardEsp(inst, card, dist, prefix)
         distLbl.TextXAlignment = Enum.TextXAlignment.Right
         distLbl.Text = tostring(dist or 0) .. "m"
         distLbl.Parent = cardFrame
+
         local statsLbl = Instance.new("TextLabel")
         statsLbl.BackgroundTransparency = 1
         statsLbl.Position = UDim2.new(0, 43, 0, 18)
@@ -4888,9 +4881,11 @@ local function addEggCardEsp(inst, card, dist, prefix)
             statsLbl.Text = card.rarity
         end
         statsLbl.Parent = cardFrame
-        table.insert(espCardPool, { bb = bb, inst = inst })
+
+        table.insert(espCardPool, { bb = bb, inst = targetPart })
     end)
 end
+
 local function refreshWorldEggEsp()
     clearEggCardEsp()
     if not h.espWorldEgg then return end
@@ -4898,8 +4893,88 @@ local function refreshWorldEggEsp()
     local rootPart = char and char:FindFirstChild("HumanoidRootPart")
     local myPos = rootPart and rootPart.Position or Vector3.new(525, 70, -360)
     local maxDist = tonumber(h.espMaxDist) or 5000
-    local eggs = h4(false)
     local rendered = {}
+
+    -- 1. Scan Garden / Base Plot Eggs ("Vườn nhà tôi")
+    pcall(function()
+        local myPlot, myPen, myOrigin = t4()
+        local baseCF = (myPen and myPen.CFrame) or (myOrigin and myOrigin.CFrame) or (myPlot and myPlot:GetPivot())
+        if c and baseCF then
+            local ok, liveSnap = pcall(function() return c:InvokeServer() end)
+            if ok and type(liveSnap) == "table" then
+                for slotId, plotData in pairs(liveSnap) do
+                    if type(plotData) == "table" and (plotData.OwnerUserId == o.UserId or tostring(plotData.OwnerUserId) == tostring(o.UserId) or tostring(slotId) == tostring(h.plot and h.plot.Name)) then
+                        for eggUid, eggRec in pairs(plotData.Records or {}) do
+                            if not rendered[eggUid] and eggRec.Placement and eggRec.Placement.LocalCFrame then
+                                local worldPos = (baseCF * eggRec.Placement.LocalCFrame).Position
+                                local dist = math.floor((myPos - worldPos).Magnitude)
+                                if dist <= maxDist then
+                                    rendered[eggUid] = true
+                                    -- Find physical stand / model in myPlot
+                                    local targetPart = nil
+                                    if myPlot then
+                                        for _, part in ipairs(myPlot:GetDescendants()) do
+                                            if part:IsA("BasePart") and (part.Position - worldPos).Magnitude <= 4.5 then
+                                                targetPart = part.Parent:IsA("Model") and part.Parent or part
+                                                break
+                                            end
+                                        end
+                                        if not targetPart then
+                                            for _, part in ipairs(myPlot:GetDescendants()) do
+                                                if (part:GetAttribute("UID") == eggUid or part:GetAttribute("EggUid") == eggUid or part.Name == eggUid) then
+                                                    targetPart = part
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+                                    -- If no physical part near worldPos, create invisible Adornee part at exact worldPos!
+                                    if not targetPart then
+                                        local tempPart = Instance.new("Part")
+                                        tempPart.Name = "GardenEggPoint_" .. tostring(eggUid)
+                                        tempPart.Size = Vector3.new(2, 2, 2)
+                                        tempPart.CFrame = CFrame.new(worldPos)
+                                        tempPart.Anchored = true
+                                        tempPart.CanCollide = false
+                                        tempPart.CanTouch = false
+                                        tempPart.Transparency = 1
+                                        tempPart.Parent = myPlot or workspace
+                                        table.insert(espTempParts, tempPart)
+                                        targetPart = tempPart
+                                    end
+                                    local card = getEggCardData(eggRec, targetPart)
+                                    addEggCardEsp(targetPart, card, dist, " [Vườn]")
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Also scan physical incubator stands / egg models directly in myPlot
+        if myPlot then
+            for _, obj in ipairs(myPlot:GetDescendants()) do
+                if (obj:IsA("Model") or obj:IsA("BasePart")) and (obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj:GetAttribute("Category") or string.find(string.lower(obj.Name), "egg")) then
+                    local uid = obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj.Name
+                    if not rendered[uid] then
+                        local p = obj:IsA("BasePart") and obj or (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))
+                        if p then
+                            local dist = math.floor((myPos - p.Position).Magnitude)
+                            if dist <= maxDist then
+                                rendered[uid] = true
+                                local card = getEggCardData(nil, obj)
+                                addEggCardEsp(obj, card, dist, " [Vườn]")
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    -- 2. Scan Wild Field Eggs
+    local eggs = h4(false)
     if eggs and #eggs > 0 then
         for _, rec in ipairs(eggs) do
             if rec.BoundsCFrame then
@@ -4925,48 +5000,25 @@ local function refreshWorldEggEsp()
             end
         end
     end
-    if r:FindFirstChild("AreaEggSlotsClient") then
-        for _, slot in ipairs(r.AreaEggSlotsClient:GetChildren()) do
-            local uid = slot.Name
-            if not rendered[uid] then
-                -- Only render ESP if there is an actual egg in the nest!
-                local hasEggPrompt = slot:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil
-                local hasEggModel = false
-                for _, child in ipairs(slot:GetChildren()) do
-                    local cn = child.Name:lower()
-                    if cn:find("egg") or child:GetAttribute("EggUid") or child:GetAttribute("UID") or child:GetAttribute("Category") then
-                        hasEggModel = true
-                        break
-                    end
-                end
-                if hasEggPrompt or hasEggModel then
-                    local p = slot:FindFirstChildWhichIsA("BasePart") or slot.PrimaryPart
-                    if p and p.Position.X >= 530 then
-                        local dist = math.floor((myPos - p.Position).Magnitude)
-                        if dist <= maxDist then
-                            rendered[uid] = true
-                            local card = getEggCardData(nil, slot)
-                            addEggCardEsp(slot, card, dist, "")
-                        end
-                    end
-                end
-            end
-        end
-    end
 end
+
 task.spawn(function()
     while h.alive do
         if h.espWorldEgg then
             pcall(refreshWorldEggEsp)
         end
-        task.wait(1.0)
+        task.wait(2.2)
     end
 end)
+
+
+
 -- ==========================================
 -- DUYMINH EGG - WindUI (Luxury Red Edition)
 -- ==========================================
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
 local function notify(title, content, icon, duration)
     pcall(function()
         if WindUI and WindUI.Notify then
@@ -4979,226 +5031,229 @@ local function notify(title, content, icon, duration)
         end
     end)
 end
+
 pcall(function()
     WindUI:AddTheme({
         Name = "DuyMinhRed",
-        Accent = Color3.fromRGB(255, 38, 58),
-        Outline = Color3.fromRGB(255, 68, 88),
+        Accent = Color3.fromRGB(255, 45, 85),
+        Outline = Color3.fromRGB(220, 30, 70),
         Text = Color3.fromRGB(255, 255, 255),
-        Placeholder = Color3.fromRGB(190, 170, 175),
-        Background = Color3.fromRGB(18, 14, 16),
-        Button = Color3.fromRGB(36, 20, 24),
-        Icon = Color3.fromRGB(255, 55, 75),
+        Placeholder = Color3.fromRGB(200, 180, 190),
+        Background = Color3.fromRGB(18, 12, 16),
+        Button = Color3.fromRGB(38, 22, 30),
+        Icon = Color3.fromRGB(255, 60, 100),
     })
-    WindUI:SetTheme("DuyMinhRed")
 end)
-local Window = WindUI:CreateWindow({
+
+Window = WindUI:CreateWindow({
     Title = "Love Thảo EGG",
-    Icon = "rbxassetid://118833096342184",
+    Icon = "flame",
     Author = "DuyMinh",
-    Folder = "DuyMinhEGG",
-    Background = "rbxassetid://133044138027516",
-    Size = UDim2.fromOffset(640, 500),
-    MinSize = Vector2.new(440, 340),
-    Resizable = true,
-    Transparent = false,
+    Folder = "DuyMinh_Egg_Red",
+    Size = UDim2.fromOffset(600, 480),
+    Transparent = true,
     Theme = "DuyMinhRed",
-    User = { Enabled = true, Anonymous = false },
-    OpenButton = {
-        Title = "Love Thảo EGG",
-        Icon = "egg",
-        CornerRadius = UDim.new(0, 16),
-        StrokeThickness = 2,
-        Color = ColorSequence.new(
-            Color3.fromRGB(255, 38, 58),
-            Color3.fromRGB(190, 15, 30)
-        ),
-        OnlyMobile = false,
-        Enabled = true,
-        Draggable = true,
-    },
+    SideBarWidth = 185,
+    HasOutline = true,
 })
-pcall(function()
-    Window:Tag({ Title = "PRO v2.5 Red", Icon = "egg", Color = Color3.fromRGB(255, 38, 58) })
-end)
-pcall(function()
-    Window:EditOpenButton({
-        Title = "Love Thảo EGG",
-        Icon = "egg",
-        CornerRadius = UDim.new(0, 16),
-        StrokeThickness = 2,
-        Color = ColorSequence.new(
-            Color3.fromRGB(255, 38, 58),
-            Color3.fromRGB(190, 15, 30)
-        ),
-        OnlyMobile = false,
-        Enabled = true,
-        Draggable = true,
-    })
-end)
-pcall(function()
-    notify("DuyMinh EGG", "Chào mừng bạn! Menu DuyMinh EGG đã sẵn sàng.", "check", 3.5)
-end)
-local mainSec = Window:Section({ Title = "Chức năng chính (Principal)", Opened = true })
-local toolsSec = Window:Section({ Title = "Công cụ & Cài đặt (Tools)", Opened = true })
-local InfoTab = mainSec:Tab({ Title = "Thông tin", Icon = "info" })
-InfoTab:Paragraph({
-    Title = "DuyMinh EGG - Ultimate Farm",
-    Desc = "Auto steal (tween/teleport), bay thẳng về vườn không delay, ESP ảnh thú & $/s, lọc loại trứng xịn, treadmill, godmode.\nTối ưu hóa tốc độ và giao diện sắc đỏ sang trọng.\nPhát triển bởi DuyMinh.",
+
+local InfoTab = Window:Tab({ Title = "Thông tin", Icon = "info" })
+local StealTab = Window:Tab({ Title = "Auto Steal", Icon = "egg" })
+local PlaceTab = Window:Tab({ Title = "Place & Hatch", Icon = "sparkles" })
+local SelectTab = Window:Tab({ Title = "Egg Select", Icon = "filter" })
+local EspTab = Window:Tab({ Title = "ESP Trứng", Icon = "eye" })
+local CharTab = Window:Tab({ Title = "Nhân vật", Icon = "user" })
+local SettingsTab = Window:Tab({ Title = "Cài đặt", Icon = "settings" })
+
+-- INFO TAB
+InfoTab:Section({ Title = "Bảng điều khiển hệ thống" })
+local statusParagraph = InfoTab:Paragraph({
+    Title = "Trạng thái hoạt động",
+    Desc = "Đang khởi tạo dữ liệu...",
 })
-InfoTab:Paragraph({
-    Title = "Trạng thái",
-    Desc = "Phiên bản: DuyMinh EGG v2.5 Red Edition\\nHệ thống: Tối ưu chống văng, chống bẫy, chống lag.",
-})
-local StealTab = mainSec:Tab({ Title = "Auto Steal", Icon = "zap" })
-local PlaceTab = mainSec:Tab({ Title = "Place & Hatch", Icon = "package" })
-local SelectTab = mainSec:Tab({ Title = "Egg Select", Icon = "list" })
-local EspTab = mainSec:Tab({ Title = "ESP Trứng", Icon = "eye" })
-local CharTab = toolsSec:Tab({ Title = "Nhân vật", Icon = "user" })
-local SettingsTab = toolsSec:Tab({ Title = "Cài đặt", Icon = "settings" })
--- AUTO STEAL
-StealTab:Section({ Title = "Chế độ cướp trứng" })
+
+task.spawn(function()
+    while h.alive do
+        pcall(function()
+            local carried = 0
+            local char = o.Character
+            if char then
+                for _, item in ipairs(char:GetChildren()) do
+                    if m(item) then carried = carried + 1 end
+                end
+            end
+            local bp = o:FindFirstChildOfClass("Backpack")
+            if bp then
+                for _, item in ipairs(bp:GetChildren()) do
+                    if m(item) then carried = carried + 1 end
+                end
+            end
+            local modeStr = "Nghỉ (Idle)"
+            if h.pureTweenFarm then modeStr = "Pure Tween Farm"
+            elseif h.autoFarmLoop then modeStr = "Auto Farm Loop"
+            elseif h.autoStealLoop then modeStr = "Auto Steal (Fast)"
+            elseif h.snipeLoop then modeStr = "Snipe Loop"
+            end
+            statusParagraph:SetDesc(string.format(
+                "⚡ Trạng thái: %s\n🎯 Chế độ: %s\n🥚 Trứng đang cầm: %d quả\n🚀 Tốc độ bay: %d studs/s\n✨ Trứng tốt nhất: %s",
+                tostring(h.statusText or "Sẵn sàng"),
+                modeStr,
+                carried,
+                h.glideSpeed or 600,
+                tostring(h.bestEggInfo or "Đang quét...")
+            ))
+        end)
+        task.wait(0.5)
+    end
+end)
+
+-- AUTO STEAL TAB
+StealTab:Section({ Title = "Cướp Trứng Tự Động (Auto Steal Loop)" })
 StealTab:Toggle({
-    Title = "Auto Steal (Tween)",
-    Desc = "Bay mượt cướp trứng và tự động bay thẳng về khu vườn (Không delay).",
-    Value = false,
+    Title = "Tự động cướp trứng (Auto Steal Loop)",
+    Desc = "Bay tới trứng mục tiêu, kích hoạt guard strike, nhặt và bay về Safe Line X=525.",
+    Value = h.autoStealLoop == true,
     Callback = function(state)
+        h.autoStealLoop = state
         if state then
-            T4("TWEEN")
-            notify("Auto Steal", "🔥 Đã BẬT Auto Steal (Tween) - Bay mượt cướp trứng!", "zap", 2.5)
+            task.spawn(Ck)
+            notify("Auto Steal", "🔥 Đã BẬT Auto Steal Loop!", "check", 2.0)
         else
-            if Y4 == "TWEEN" or h.pureTweenFarm then T4("NONE") end
-            notify("Auto Steal", "⏹️ Đã TẮT Auto Steal (Tween)!", "x", 2.0)
+            pcall(D4)
+            notify("Auto Steal", "⏹️ Đã TẮT Auto Steal Loop!", "x", 2.0)
         end
     end,
 })
 StealTab:Toggle({
-    Title = "Auto Steal (Teleport)",
-    Desc = "Dịch chuyển tức thời liên tục cướp trứng và bay về vườn.",
-    Value = false,
+    Title = "Săn trứng tức thì (Snipe Loop)",
+    Desc = "Dịch chuyển siêu tốc tới quả trứng giá trị cao nhất và cướp ngay.",
+    Value = h.snipeLoop == true,
     Callback = function(state)
+        h.snipeLoop = state
         if state then
-            T4("WARP")
-            notify("Auto Steal", "⚡ Đã BẬT Auto Steal (Teleport) - Cướp cực nhanh!", "zap", 2.5)
+            task.spawn(qk)
+            notify("Snipe Loop", "⚡ Đã BẬT Snipe Loop!", "zap", 2.0)
         else
-            if Y4 == "WARP" or h.autoFarmLoop then T4("NONE") end
-            notify("Auto Steal", "⏹️ Đã TẮT Auto Steal (Teleport)!", "x", 2.0)
+            pcall(D4)
+            notify("Snipe Loop", "⏹️ Đã TẮT Snipe Loop!", "x", 2.0)
         end
     end,
 })
 StealTab:Button({
-    Title = "Cướp 1 quả (Single Steal)",
-    Desc = "Cướp 1 quả trứng xịn nhất rồi bay thẳng về vườn ngay lập tức.",
+    Title = "Cướp 1 quả tốt nhất ngay (Single Steal)",
+    Desc = "Thực hiện 1 chu kỳ cướp duy nhất rồi tự động dừng lại.",
     Callback = function()
-        notify("Auto Steal", "🎯 Đang cướp 1 quả trứng mục tiêu...", "zap", 2.0)
+        notify("Single Steal", "🎯 Đang tìm và cướp 1 quả trứng tốt nhất...", "target", 2.0)
         task.spawn(function()
-            if Y4 ~= "NONE" then T4("NONE") task.wait(0.2) end
-            local egg = N4()
-            if egg then
-                local ok = l4(egg, nil)
-                if ok then
-                    pcall(u4)
-                    if h.autoGlide then
-                        Q4(h.glideSpeed)
-                        pcall(u4)
-                    end
-                    notify("Auto Steal", "✅ Cướp trứng thành công!", "check", 2.0)
-                end
-            else
-                notify("Auto Steal", "❌ Không tìm thấy trứng phù hợp!", "x", 2.0)
+            local egg = pcall(l4, false)
+            if egg and h.autoGlide then
+                pcall(function() Q4(h.glideSpeed) end)
             end
+            notify("Single Steal", "✅ Đã hoàn thành chu kỳ cướp!", "check", 2.0)
         end)
     end,
 })
-StealTab:Slider({
-    Title = "Tốc độ bay (Flight Speed)",
-    Desc = "Chỉnh tốc độ bay khi đi cướp trứng và bay về vườn (studs/giây)",
-    Step = 25,
-    Value = { Min = 100, Max = 1000, Default = h.glideSpeed or 600 },
-    Callback = function(v)
-        h.glideSpeed = math.clamp(math.floor(v), 100, 1000)
-        pcall(Y, h.glideSpeed)
-    end,
-})
--- PLACE & HATCH
-PlaceTab:Section({ Title = "Đặt & Ấp trứng" })
-PlaceTab:Button({
-    Title = "Đặt trứng vào rẫy ngay (Place Eggs)",
-    Desc = "Bay về vườn, đặt toàn bộ trứng vào giá đỡ và yêu cầu ấp.",
-    Callback = function()
-        notify("Place & Hatch", "🏡 Đang bay về vườn để đặt trứng...", "package", 2.0)
-        task.spawn(function()
-            h.statusText = "[Manual] Depositing eggs..."
-            g4(h.glideSpeed, nil, true)
-            v4()
-            u4()
-            h.isReturning = false
-            h.delivering = false
-            notify("Place & Hatch", "✅ Đã đặt trứng vào rẫy và ấp thành công!", "check", 2.5)
-        end)
-    end,
-})
-PlaceTab:Toggle({
-    Title = "Tự về đặt trứng mỗi 5 quả (Auto Place Every 5)",
-    Desc = "Cứ sau mỗi 5 lần cướp trứng sẽ tự bay về vườn đặt trứng.",
-    Value = h.autoPlaceEvery5 == true,
+StealTab:Section({ Title = "Cướp Trứng Cổ Điển" })
+StealTab:Toggle({
+    Title = "Pure Tween Farm",
+    Desc = "Bay Tween mượt mà tới trứng mục tiêu theo đường cao tốc.",
+    Value = h.pureTweenFarm == true,
     Callback = function(state)
-        h.autoPlaceEvery5 = state
-        if not state then h.batchStealCount = 0 end
+        h.pureTweenFarm = state
+        pcall(x)
         if state then
-            notify("Place & Hatch", "📦 Đã BẬT Tự đặt trứng mỗi 5 quả!", "package", 2.0)
+            task.spawn(wk)
+            notify("Farm", "🚀 Đã BẬT Pure Tween Farm!", "check", 2.0)
         else
-            notify("Place & Hatch", "⏹️ Đã TẮT Tự đặt trứng!", "x", 2.0)
+            pcall(D4)
+            notify("Farm", "⏹️ Đã TẮT Pure Tween Farm!", "x", 2.0)
         end
     end,
 })
-PlaceTab:Toggle({
-    Title = "Tự động ấp & nở trứng (Auto Hatch)",
-    Desc = "Tự động hoàn thành nở các quả trứng đã sẵn sàng từ mọi nơi.",
-    Value = h.autoHatch ~= false,
+StealTab:Toggle({
+    Title = "Auto Farm Loop (Tự cướp liên tục)",
+    Desc = "Vòng lặp tự động cướp trứng liên tục không nghỉ.",
+    Value = h.autoFarmLoop == true,
     Callback = function(state)
-        h.autoHatch = state
+        h.autoFarmLoop = state
+        pcall(x)
         if state then
-            notify("Place & Hatch", "🐣 Đã BẬT Tự động ấp & nở trứng!", "sparkles", 2.0)
+            task.spawn(jk)
+            notify("Farm", "🔄 Đã BẬT Auto Farm Loop!", "check", 2.0)
         else
-            notify("Place & Hatch", "⏹️ Đã TẮT Tự động ấp trứng!", "x", 2.0)
+            pcall(D4)
+            notify("Farm", "⏹️ Đã TẮT Auto Farm Loop!", "x", 2.0)
         end
     end,
 })
+
+-- PLACE & HATCH TAB
+PlaceTab:Section({ Title = "Đặt & Ấp Trứng Tự Động" })
 PlaceTab:Toggle({
     Title = "Tự bay về vườn sau khi cướp (Auto Return)",
-    Desc = "Sau khi cướp được trứng, lập tức bay thẳng về khu vườn mà không dừng lại.",
+    Desc = "Bay an toàn về căn cứ vườn nhà ngay sau khi nhặt được trứng.",
     Value = h.autoGlide ~= false,
     Callback = function(state)
         h.autoGlide = state
-        if state then
-            notify("Auto Return", "🚀 Đã BẬT Tự bay về vườn ngay khi nhặt trứng!", "check", 2.0)
-        else
-            notify("Auto Return", "⏹️ Đã TẮT Tự bay về vườn!", "x", 2.0)
-        end
+        pcall(x)
+        notify("Safe Return", state and "🏡 Đã BẬT Tự bay về an toàn!" or "⚠️ Đã TẮT Tự bay về!", "home", 2.0)
     end,
 })
 PlaceTab:Toggle({
-    Title = "Tự chạy máy khi rảnh (Auto Treadmill)",
-    Desc = "Tự động leo lên máy chạy bộ tại nhà khi chưa có trứng mục tiêu.",
+    Title = "Tự động ấp trứng (Auto Hatch)",
+    Desc = "Tự động mở trứng trong lò ấp khi đạt đủ thời gian.",
+    Value = h.autoHatch ~= false,
+    Callback = function(state)
+        h.autoHatch = state
+        pcall(x)
+        notify("Auto Hatch", state and "🐣 Đã BẬT Tự động ấp trứng!" or "⏹️ Đã TẮT Tự động ấp trứng!", "sparkles", 2.0)
+    end,
+})
+PlaceTab:Toggle({
+    Title = "Tự động đặt trứng mỗi 5 quả (Auto Place Every 5)",
+    Desc = "Gom đủ 5 quả trứng trong túi sẽ tự bay về đặt vào vườn.",
+    Value = h.autoPlaceEvery5 == true,
+    Callback = function(state)
+        h.autoPlaceEvery5 = state
+        pcall(x)
+        notify("Auto Place", state and "📦 Đã BẬT Đặt trứng mỗi 5 quả!" or "⏹️ Đã TẮT!", "box", 2.0)
+    end,
+})
+PlaceTab:Button({
+    Title = "Đặt toàn bộ trứng vào vườn ngay (Place All Eggs)",
+    Desc = "Bay về vườn và đặt toàn bộ trứng trong người vào khay ấp.",
+    Callback = function()
+        notify("Place Eggs", "🏃 Đang bay về đặt trứng vào vườn...", "arrow-down", 2.0)
+        task.spawn(function()
+            pcall(s4)
+            pcall(y4)
+            notify("Place Eggs", "✅ Đã đặt toàn bộ trứng vào vườn!", "check", 2.0)
+        end)
+    end,
+})
+PlaceTab:Button({
+    Title = "Ấp tất cả trứng sẵn sàng (Hatch Ready Eggs)",
+    Desc = "Kích hoạt ấp ngay các quả trứng đã chín trong vườn.",
+    Callback = function()
+        task.spawn(function()
+            local count = pcall(J4, true)
+            notify("Hatch Eggs", "🎉 Đã kích hoạt ấp trứng sẵn sàng!", "sparkles", 2.0)
+        end)
+    end,
+})
+PlaceTab:Section({ Title = "Máy chạy bộ (Treadmill) & Trails" })
+PlaceTab:Toggle({
+    Title = "Tự động lên máy chạy (Auto Treadmill)",
+    Desc = "Tự động lên máy chạy bộ để cày tiền và kinh nghiệm khi rảnh.",
     Value = h.autoTreadmill ~= false,
     Callback = function(state)
         h.autoTreadmill = state
         pcall(x)
-        pcall(n4)
-        if not state and (h.onTreadmill or (L4 and L4())) then
-            pcall(M4)
-        end
-        if state then
-            notify("Treadmill", "🏃 Đã BẬT Tự chạy máy bộ!", "activity", 2.0)
-        else
-            notify("Treadmill", "⏹️ Đã TẮT Tự chạy máy bộ!", "x", 2.0)
-        end
     end,
 })
 PlaceTab:Toggle({
-    Title = "Tự nâng cấp máy chạy (Auto Upgrade Treadmill)",
-    Desc = "Tự động nâng cấp máy chạy bộ khi đủ tiền.",
+    Title = "Tự động nâng cấp máy chạy (Auto Upgrade Treadmill)",
+    Desc = "Tự nâng cấp máy chạy bộ khi đủ tiền.",
     Value = h.autoUpgradeTreadmill ~= false,
     Callback = function(state)
         h.autoUpgradeTreadmill = state
@@ -5206,181 +5261,133 @@ PlaceTab:Toggle({
     end,
 })
 PlaceTab:Toggle({
-    Title = "Tự mua & trang bị Trails (Auto Buy Trails)",
-    Desc = "Tự động mua và gắn Trail tăng tốc độ tốt nhất khi đủ tiền.",
+    Title = "Tự động mua & trang bị Trails (Auto Buy Trails)",
+    Desc = "Tự mua và trang bị hiệu ứng chạy nhanh nhất.",
     Value = h.autoBuyTrails ~= false,
     Callback = function(state)
         h.autoBuyTrails = state
         pcall(x)
     end,
 })
--- EGG SELECT
-SelectTab:Section({ Title = "Lọc & Ưu tiên trứng" })
-SelectTab:Paragraph({
-    Title = "Quy tắc ưu tiên trứng xịn",
-    Desc = "Hệ thống tự động xếp hạng và ƯU TIÊN cướp các loại trứng đặc biệt/xịn nhất trước:\\n👑 Divine (Cực Phẩm) > 🌌 Eternal > 🔮 Secret > 🪐 Cosmic > 🦄 Mythic > ⚔️ Legendary > Epic > Rare > Uncommon > Common.",
-})
-local function buildSelectedList(map, order)
+
+-- EGG SELECT TAB
+SelectTab:Section({ Title = "Lựa chọn Khu Vực & Độ Hiếm" })
+local function buildSelectedList(tbl, defaultList)
     local out = {}
-    if type(map) ~= "table" then return out end
-    for _, name in ipairs(order) do
-        if map[name] == true then
-            out[#out + 1] = name
+    if tbl then
+        for k, v in pairs(tbl) do
+            if v == true then table.insert(out, k) end
         end
     end
+    if #out == 0 and defaultList then return defaultList end
     return out
 end
-local function applyMultiSelect(map, order, selected)
-    if type(map) ~= "table" then map = {} end
-    local set = {}
-    if type(selected) == "table" then
-        for _, v in pairs(selected) do
-            if type(v) == "string" then set[v] = true end
-            if type(v) == "table" and type(v.Title) == "string" then set[v.Title] = true end
-        end
-        for i = 1, #selected do
-            local v = selected[i]
-            if type(v) == "string" then set[v] = true end
-        end
-    elseif type(selected) == "string" then
-        set[selected] = true
-    end
-    for _, name in ipairs(order) do
-        map[name] = set[name] == true
-    end
+local function listToMap(list)
+    local map = {}
+    for _, v in ipairs(list) do map[v] = true end
     return map
 end
 SelectTab:Dropdown({
-    Title = "Độ hiếm mục tiêu (Target Rarities)",
-    Desc = "Chọn các độ hiếm trứng muốn cướp (Ưu tiên từ cao xuống thấp).",
-    Values = X,
-    Value = buildSelectedList(h.selectedRarities, X),
+    Title = "Chọn khu vực cướp trứng (Zones)",
+    Desc = "Chọn các map bạn muốn cướp trứng.",
     Multi = true,
-    AllowNone = true,
-    Callback = function(selected)
-        if not h.selectedRarities then h.selectedRarities = {} end
-        applyMultiSelect(h.selectedRarities, X, selected)
+    Values = M,
+    Value = buildSelectedList(h.selectedZones, M),
+    Callback = function(values)
+        local selectedList = {}
+        if type(values) == "table" then
+            for k, v in pairs(values) do
+                if v == true then table.insert(selectedList, k)
+                elseif type(k) == "number" then table.insert(selectedList, v)
+                end
+            end
+        end
+        h.selectedZones = listToMap(selectedList)
         pcall(x)
-        notify("Egg Select", "Đã cập nhật danh sách độ hiếm mục tiêu!", "list", 1.8)
     end,
 })
 SelectTab:Dropdown({
-    Title = "Khu vực mục tiêu (Target Zones)",
-    Desc = "Chọn các khu vực muốn farm trứng.",
-    Values = M,
-    Value = buildSelectedList(h.selectedZones, M),
+    Title = "Chọn độ hiếm ưu tiên (Rarities)",
+    Desc = "Chỉ nhặt các độ hiếm được chọn.",
     Multi = true,
-    AllowNone = true,
-    Callback = function(selected)
-        if not h.selectedZones then h.selectedZones = {} end
-        applyMultiSelect(h.selectedZones, M, selected)
+    Values = { "Divine", "Eternal", "Secret", "Cosmic", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common" },
+    Value = buildSelectedList(h.selectedRarities, { "Divine", "Eternal", "Secret", "Cosmic", "Mythic", "Legendary" }),
+    Callback = function(values)
+        local selectedList = {}
+        if type(values) == "table" then
+            for k, v in pairs(values) do
+                if v == true then table.insert(selectedList, k)
+                elseif type(k) == "number" then table.insert(selectedList, v)
+                end
+            end
+        end
+        h.selectedRarities = listToMap(selectedList)
         pcall(x)
-        notify("Egg Select", "Đã cập nhật danh sách khu vực mục tiêu!", "list", 1.8)
     end,
 })
 SelectTab:Toggle({
-    Title = "Luôn cướp Secret+ (Always Steal Secret+)",
-    Desc = "Luôn tự động cướp trứng Secret, Eternal, Divine ở mọi khu vực.",
+    Title = "Luôn cướp Secret+ (Bất kể khoảng cách)",
+    Desc = "Tự động ưu tiên cướp các quả trứng Secret, Eternal, Divine dù ở bất kỳ map nào.",
     Value = h.alwaysCollectSecretPlus ~= false,
     Callback = function(state)
         h.alwaysCollectSecretPlus = state
         pcall(x)
         if state then
-            notify("Egg Select", "⭐ Đã BẬT Luôn cướp Secret+ ở mọi nơi!", "star", 2.0)
+            notify("Egg Select", "🌟 Đã BẬT Luôn cướp Secret+!", "sparkles", 2.0)
         else
             notify("Egg Select", "⏹️ Đã TẮT Luôn cướp Secret+!", "x", 2.0)
         end
     end,
 })
--- ESP TRỨNG TAB
-EspTab:Section({ Title = "ESP Trứng (Ảnh thú, Tên & $/s)" })
+
+-- ESP TAB
+EspTab:Section({ Title = "Thị Giác ESP Trứng (Egg ESP)" })
 EspTab:Toggle({
-    Title = "Bật ESP Trứng thế giới (World Egg ESP)",
-    Desc = "Hiển thị khung thông tin: Ảnh con thú trong trứng, Số tiền farm/1s, Tên con thú và Độ hiếm.",
-    Value = h.espWorldEgg == true,
+    Title = "Bật ESP Trứng Đầy Đủ (Egg ESP Cards)",
+    Desc = "Hiển thị thẻ bài đẹp mắt: Tên thú cưng, Avatar, Số tiền $/s, Độ hiếm (Cả trứng ngoài bản đồ & Trong vườn nhà bạn).",
+    Value = h.espWorldEgg ~= false,
     Callback = function(state)
         h.espWorldEgg = state
         if state then
-            notify("ESP Trứng", "👁️ Đã BẬT ESP Trứng (Hiện ảnh thú & $/s)!", "eye", 2.5)
             pcall(refreshWorldEggEsp)
+            notify("ESP Trứng", "👁️ Đã BẬT Thẻ ESP Trứng & Vườn!", "eye", 2.0)
         else
-            notify("ESP Trứng", "👁️‍🗨️ Đã TẮT ESP Trứng!", "eye-off", 2.0)
             pcall(clearEggCardEsp)
+            notify("ESP Trứng", "⏹️ Đã TẮT Thẻ ESP Trứng!", "eye-off", 2.0)
         end
     end,
 })
 EspTab:Slider({
-    Title = "Khoảng cách ESP (Max Distance)",
-    Desc = "Khoảng cách tối đa để quét và hiển thị ESP (studs)",
-    Step = 250,
-    Value = { Min = 500, Max = 10000, Default = h.espMaxDist or 5000 },
+    Title = "Khoảng cách quét ESP (Max Distance)",
+    Desc = "Khoảng cách tối đa hiển thị thẻ bài ESP (100 - 10000m).",
+    Step = 100,
+    Value = { Min = 100, Max = 10000, Default = h.espMaxDist or 5000 },
     Callback = function(v)
-        h.espMaxDist = math.clamp(math.floor(v), 500, 10000)
-        if h.espWorldEgg then
-            pcall(refreshWorldEggEsp)
-        end
+        h.espMaxDist = tonumber(v) or 5000
     end,
 })
 EspTab:Button({
     Title = "Làm mới ESP ngay (Force Refresh ESP)",
-    Desc = "Quét lại toàn bộ trứng trên bản đồ và cập nhật thẻ thông tin.",
+    Desc = "Quét lại toàn bộ trứng trên bản đồ và trong vườn nhà, cập nhật thẻ số tiền $/s.",
     Callback = function()
         pcall(refreshWorldEggEsp)
-        notify("ESP Trứng", "🔄 Đã làm mới toàn bộ ESP Trứng!", "check", 1.8)
+        notify("ESP Trứng", "🔄 Đã quét và cập nhật toàn bộ ESP Trứng & Vườn!", "check", 2.0)
     end,
 })
+
 -- CHARACTER TAB
 CharTab:Section({ Title = "An toàn & Nhân vật" })
 CharTab:Toggle({
-    Title = "Bypass Speed (Đánh lừa Game - Chống giật)",
-    Desc = "Đánh lừa game hiển thị WalkSpeed=16, di chuyển mượt mà không bị giật lùi.",
-    Value = h.speedBypass ~= false,
+    Title = "Bất tử (Godmode)",
+    Desc = "Kháng 100% sát thương, bẫy và lính gác (Desync Godmode).",
+    Value = false,
     Callback = function(state)
-        h.speedBypass = state
         if state then
-            notify("Speed Bypass", "🚀 Đã BẬT Bypass Speed - Chạy nhanh không giật!", "zap", 2.0)
+            pcall(enableDesyncGodmode)
+            notify("Godmode", "🛡️ Đã BẬT Bất tử (Godmode)!", "shield-check", 2.5)
         else
-            notify("Speed Bypass", "⏹️ Đã TẮT Bypass Speed!", "x", 2.0)
-        end
-    end,
-})
-CharTab:Slider({
-    Title = "Tốc độ chạy & Bypass Speed",
-    Desc = "Chỉnh tốc độ di chuyển mong muốn (16 - 80 studs/s, khuyên dùng 28 - 36).",
-    Step = 2,
-    Value = { Min = 16, Max = 80, Default = h.walkSpeed or 32 },
-    Callback = function(v)
-        h.walkSpeed = math.clamp(math.floor(v), 16, 80)
-        h.enableWalkSpeed = true
-        local hum = o.Character and o.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed = math.min(h.walkSpeed, 26)
-        end
-    end,
-})
-CharTab:Toggle({
-    Title = "Chống đi chậm khi vác trứng/pet (Anti Slow)",
-    Desc = "Giữ tốc độ di chuyển tối đa ngay cả khi đang cầm trứng hoặc thú cưng.",
-    Value = h.antiCarrySlowdown ~= false,
-    Callback = function(state)
-        h.antiCarrySlowdown = state
-        if state then
-            notify("WalkSpeed", "⚡ Đã BẬT Chống đi chậm khi vác trứng!", "zap", 2.0)
-        else
-            notify("WalkSpeed", "⏹️ Đã TẮT Chống đi chậm!", "x", 2.0)
-        end
-    end,
-})
-CharTab:Toggle({
-    Title = "Chống bot đánh văng (Anti Knockback)",
-    Desc = "Giữ vững vị trí, không bị bot/lính gác đánh văng xa hay hất lên trời.",
-    Value = h.antiKnockback ~= false,
-    Callback = function(state)
-        h.antiKnockback = state
-        if state then
-            notify("Anti Knockback", "🛡️ Đã BẬT Chống bot đánh văng!", "shield-check", 2.0)
-        else
-            notify("Anti Knockback", "⚠️ Đã TẮT Chống bot đánh văng!", "shield-alert", 2.0)
+            pcall(disableDesyncGodmode)
+            notify("Godmode", "⚠️ Đã TẮT Bất tử!", "shield-alert", 2.0)
         end
     end,
 })
@@ -5395,20 +5402,6 @@ CharTab:Toggle({
             notify("Anti Trap", "🛡️ Đã BẬT Miễn nhiễm bẫy!", "shield-check", 2.0)
         else
             notify("Anti Trap", "⚠️ Đã TẮT Miễn nhiễm bẫy!", "shield-alert", 2.0)
-        end
-    end,
-})
-CharTab:Toggle({
-    Title = "Bất tử (Godmode)",
-    Desc = "Kháng 100% sát thương, bẫy và lính gác (Desync Godmode).",
-    Value = false,
-    Callback = function(state)
-        if state then
-            pcall(enableDesyncGodmode)
-            notify("Godmode", "🛡️ Đã BẬT Bất tử (Godmode)!", "shield-check", 2.5)
-        else
-            pcall(disableDesyncGodmode)
-            notify("Godmode", "⚠️ Đã TẮT Bất tử!", "shield-alert", 2.0)
         end
     end,
 })
@@ -5433,6 +5426,7 @@ CharTab:Button({
 })
 CharTab:Slider({
     Title = "Tốc độ bay (Flight Speed)",
+    Desc = "Tốc độ bay lượn (Cruise speed) khi đi cướp trứng.",
     Step = 25,
     Value = { Min = 100, Max = 1000, Default = h.glideSpeed or 600 },
     Callback = function(v)
@@ -5440,6 +5434,7 @@ CharTab:Slider({
         pcall(Y, h.glideSpeed)
     end,
 })
+
 -- SETTINGS TAB
 SettingsTab:Section({ Title = "Cài đặt hệ thống" })
 local currentToggleKey = Enum.KeyCode.RightControl
@@ -5539,6 +5534,7 @@ SettingsTab:Button({
         pcall(function() Window:Destroy() end)
     end,
 })
+
 print("[DuyMinh EGG] WindUI Red Edition loaded successfully!")
 task.spawn(function()
 	task.wait(0.5)
