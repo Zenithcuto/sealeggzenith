@@ -3231,14 +3231,18 @@ U4=function(e,u,w,j,...)
     end
     h.statusText = "[2/4] Waiting for Guard Strike..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
     local J=os.clock ()
-    local K=J+ 4.5
+    local K=J+ 2.0
     local c= false
-    while w4()and(os.clock ()<K and(h.alive and h.securingEgg ))do
+    while (e4() or w4()) and (os.clock ()<K and(h.alive and h.securingEgg ))do
         if j and O4~=j then
             t( "[GuardStrike] Cancelled by session switch in Step 2" )
             break
         end
         if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+            break
+        end
+        -- Bị đánh rơi trứng -> THOÁT NGAY LẬP TỨC TRONG 0s để nhặt lại!
+        if not e4() then
             break
         end
         k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))V4(s, 14 )
@@ -3254,11 +3258,15 @@ U4=function(e,u,w,j,...)
             end
             )c= true
         end
+        -- Nếu đã kích hoạt đòn đánh và trôi qua 0.8s thì thoát ngay
+        if c and (os.clock() - J >= 0.8) then
+            break
+        end
         y.Heartbeat :Wait()
     end
-    h.statusText = "[3/4] Re-grabbing Egg..." H( "[GuardStrike] Step 3: Guard struck! Re-grabbing egg..." )
-    local v=os.clock ()+ 3
-    while not w4()and(os.clock ()<v and(h.alive and h.securingEgg ))do
+    h.statusText = "[3/4] Re-grabbing Egg..." H( "[GuardStrike] Step 3: Guard struck! Re-grabbing egg instantly..." )
+    local v=os.clock ()+ 2.5
+    while not e4() and not j4(e) and (os.clock ()<v and(h.alive and h.securingEgg ))do
         if j and O4~=j then
             t( "[GuardStrike] Cancelled by session switch in Step 3" )
             break
@@ -3281,9 +3289,9 @@ U4=function(e,u,w,j,...)
         end
         y.Heartbeat :Wait()
     end
-    local R=j4(e)
+    local R=e4() or j4(e)
     if not R then
-        task.wait ( 0.12 )R=j4(e)
+        R=j4(e)
     end
     h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
     if j and O4~=j then
@@ -4293,7 +4301,6 @@ local function aM(...) h.alive = false pcall(Ik)pcall(Ak)pcall(function(...) y:S
 end
 
 
-
 -- ==========================================
 -- ANTI TRAP & HAZARD ENGINE (SAFE & PRECISE)
 -- ==========================================
@@ -5014,531 +5021,382 @@ end)
 
 
 -- ==========================================
--- DUYMINH EGG - WindUI (Luxury Red Edition)
+-- VORTEX X SAGE [Steal An Egg] - WindUI
 -- ==========================================
-
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-local function notify(title, content, icon, duration)
-    pcall(function()
-        if WindUI and WindUI.Notify then
-            WindUI:Notify({
-                Title = title or "Love Thảo EGG",
-                Content = content or "",
-                Duration = duration or 2.5,
-                Icon = icon or "info",
-            })
-        end
-    end)
-end
+pcall(function()
+	WindUI:AddTheme({
+		Name = "DuyMinhVortexRed",
+		Accent = Color3.fromRGB(255, 50, 80),
+		Outline = Color3.fromRGB(255, 40, 70),
+		Text = Color3.fromRGB(255, 255, 255),
+		Placeholder = Color3.fromRGB(180, 180, 190),
+		Background = Color3.fromRGB(18, 18, 22),
+		Button = Color3.fromRGB(35, 35, 42),
+		Icon = Color3.fromRGB(255, 60, 90),
+	})
+	WindUI:SetTheme("DuyMinhVortexRed")
+end)
+
+local Window = WindUI:CreateWindow({
+	Title = "Love Thảo EGG",
+	Icon = "rbxassetid://118833096342184",
+	Author = "DuyMinh",
+	Folder = "DuyMinh_Egg_Red",
+	Background = "rbxassetid://133044138027516",
+	Size = UDim2.fromOffset(620, 480),
+	MinSize = Vector2.new(420, 320),
+	Resizable = true,
+	Transparent = false,
+	Theme = "DuyMinhVortexRed",
+	User = { Enabled = true, Anonymous = false },
+	OpenButton = {
+		Title = "DuyMinh",
+		Icon = "",
+		CornerRadius = UDim.new(0, 16),
+		StrokeThickness = 2,
+		Color = ColorSequence.new(
+			Color3.fromRGB(255, 50, 80),
+			Color3.fromRGB(200, 30, 60)
+		),
+		OnlyMobile = false,
+		Enabled = true,
+		Draggable = true,
+	},
+})
 
 pcall(function()
-    WindUI:AddTheme({
-        Name = "DuyMinhRed",
-        Accent = Color3.fromRGB(255, 45, 85),
-        Outline = Color3.fromRGB(220, 30, 70),
-        Text = Color3.fromRGB(255, 255, 255),
-        Placeholder = Color3.fromRGB(200, 180, 190),
-        Background = Color3.fromRGB(18, 12, 16),
-        Button = Color3.fromRGB(38, 22, 30),
-        Icon = Color3.fromRGB(255, 60, 100),
-    })
+	Window:Tag({ Title = "DuyMinh", Icon = "egg", Color = Color3.fromRGB(255, 50, 80) })
 end)
 
-Window = WindUI:CreateWindow({
-    Title = "Love Thảo EGG",
-    Icon = "flame",
-    Author = "DuyMinh",
-    Folder = "DuyMinh_Egg_Red",
-    Size = UDim2.fromOffset(600, 480),
-    Transparent = true,
-    Theme = "DuyMinhRed",
-    SideBarWidth = 185,
-    HasOutline = true,
-})
-
-local InfoTab = Window:Tab({ Title = "Thông tin", Icon = "info" })
-local StealTab = Window:Tab({ Title = "Auto Steal", Icon = "egg" })
-local PlaceTab = Window:Tab({ Title = "Place & Hatch", Icon = "sparkles" })
-local SelectTab = Window:Tab({ Title = "Egg Select", Icon = "filter" })
-local EspTab = Window:Tab({ Title = "ESP Trứng", Icon = "eye" })
-local CharTab = Window:Tab({ Title = "Nhân vật", Icon = "user" })
-local SettingsTab = Window:Tab({ Title = "Cài đặt", Icon = "settings" })
-
--- INFO TAB
-InfoTab:Section({ Title = "Bảng điều khiển hệ thống" })
-local statusParagraph = InfoTab:Paragraph({
-    Title = "Trạng thái hoạt động",
-    Desc = "Đang khởi tạo dữ liệu...",
-})
-
-task.spawn(function()
-    while h.alive do
-        pcall(function()
-            local carried = 0
-            local char = o.Character
-            if char then
-                for _, item in ipairs(char:GetChildren()) do
-                    if m(item) then carried = carried + 1 end
-                end
-            end
-            local bp = o:FindFirstChildOfClass("Backpack")
-            if bp then
-                for _, item in ipairs(bp:GetChildren()) do
-                    if m(item) then carried = carried + 1 end
-                end
-            end
-            local modeStr = "Nghỉ (Idle)"
-            if h.pureTweenFarm then modeStr = "Pure Tween Farm"
-            elseif h.autoFarmLoop then modeStr = "Auto Farm Loop"
-            elseif h.autoStealLoop then modeStr = "Auto Steal (Fast)"
-            elseif h.snipeLoop then modeStr = "Snipe Loop"
-            end
-            statusParagraph:SetDesc(string.format(
-                "⚡ Trạng thái: %s\n🎯 Chế độ: %s\n🥚 Trứng đang cầm: %d quả\n🚀 Tốc độ bay: %d studs/s\n✨ Trứng tốt nhất: %s",
-                tostring(h.statusText or "Sẵn sàng"),
-                modeStr,
-                carried,
-                h.glideSpeed or 600,
-                tostring(h.bestEggInfo or "Đang quét...")
-            ))
-        end)
-        task.wait(0.5)
-    end
+pcall(function()
+	Window:EditOpenButton({
+		Title = "DuyMinh",
+		Icon = "",
+		CornerRadius = UDim.new(0, 16),
+		StrokeThickness = 2,
+		Color = ColorSequence.new(
+			Color3.fromRGB(255, 50, 80),
+			Color3.fromRGB(200, 30, 60)
+		),
+		OnlyMobile = false,
+		Enabled = true,
+		Draggable = true,
+	})
 end)
 
--- AUTO STEAL TAB
-StealTab:Section({ Title = "Cướp Trứng Tự Động (Auto Steal Loop)" })
+pcall(function()
+	WindUI:Notify({ Title = "DuyMinh Hub", Content = "Đã khởi chạy Love Thảo EGG", Duration = 3, Icon = "check" })
+end)
+
+local mainSec = Window:Section({ Title = "Principal", Opened = true })
+local toolsSec = Window:Section({ Title = "Tools", Opened = true })
+
+local InfoTab = mainSec:Tab({ Title = "Info", Icon = "info" })
+InfoTab:Paragraph({
+	Title = "Love Thảo EGG",
+	Desc = "Auto steal (tween/teleport), place, hatch, treadmill, godmode, zone & rarity filters.\nPhiên bản DuyMinh Red Edition chuẩn mượt mà.\nTác giả: DuyMinh",
+})
+InfoTab:Paragraph({
+	Title = "DuyMinh Hub",
+	Desc = "Love Thảo EGG Edition",
+})
+
+local StealTab = mainSec:Tab({ Title = "Auto Steal", Icon = "zap" })
+local PlaceTab = mainSec:Tab({ Title = "Place & Hatch", Icon = "package" })
+local SelectTab = mainSec:Tab({ Title = "Egg Select", Icon = "list" })
+local CharTab = toolsSec:Tab({ Title = "Character", Icon = "user" })
+local EspTab = toolsSec:Tab({ Title = "ESP Trứng", Icon = "eye" })
+local SettingsTab = toolsSec:Tab({ Title = "Settings", Icon = "settings" })
+
+-- AUTO STEAL (mismas funciones T4 / N4 / l4 / Q4)
+StealTab:Section({ Title = "Modes" })
 StealTab:Toggle({
-    Title = "Tự động cướp trứng (Auto Steal Loop)",
-    Desc = "Bay tới trứng mục tiêu, kích hoạt guard strike, nhặt và bay về Safe Line X=525.",
-    Value = h.autoStealLoop == true,
-    Callback = function(state)
-        h.autoStealLoop = state
-        if state then
-            task.spawn(Ck)
-            notify("Auto Steal", "🔥 Đã BẬT Auto Steal Loop!", "check", 2.0)
-        else
-            pcall(D4)
-            notify("Auto Steal", "⏹️ Đã TẮT Auto Steal Loop!", "x", 2.0)
-        end
-    end,
+	Title = "Auto Steal (Tween)",
+	Desc = "Vuela a robar huevos y guarda en mochila.",
+	Value = false,
+	Callback = function(state)
+		if state then
+			T4("TWEEN")
+		else
+			if Y4 == "TWEEN" or h.pureTweenFarm then T4("NONE") end
+		end
+	end,
 })
 StealTab:Toggle({
-    Title = "Săn trứng tức thì (Snipe Loop)",
-    Desc = "Dịch chuyển siêu tốc tới quả trứng giá trị cao nhất và cướp ngay.",
-    Value = h.snipeLoop == true,
-    Callback = function(state)
-        h.snipeLoop = state
-        if state then
-            task.spawn(qk)
-            notify("Snipe Loop", "⚡ Đã BẬT Snipe Loop!", "zap", 2.0)
-        else
-            pcall(D4)
-            notify("Snipe Loop", "⏹️ Đã TẮT Snipe Loop!", "x", 2.0)
-        end
-    end,
+	Title = "Auto Steal (Teleport)",
+	Desc = "Teletransporte continuo a robar huevos.",
+	Value = false,
+	Callback = function(state)
+		if state then
+			T4("WARP")
+		else
+			if Y4 == "WARP" or h.autoFarmLoop then T4("NONE") end
+		end
+	end,
 })
 StealTab:Button({
-    Title = "Cướp 1 quả tốt nhất ngay (Single Steal)",
-    Desc = "Thực hiện 1 chu kỳ cướp duy nhất rồi tự động dừng lại.",
-    Callback = function()
-        notify("Single Steal", "🎯 Đang tìm và cướp 1 quả trứng tốt nhất...", "target", 2.0)
-        task.spawn(function()
-            local egg = pcall(l4, false)
-            if egg and h.autoGlide then
-                pcall(function() Q4(h.glideSpeed) end)
-            end
-            notify("Single Steal", "✅ Đã hoàn thành chu kỳ cướp!", "check", 2.0)
-        end)
-    end,
-})
-StealTab:Section({ Title = "Cướp Trứng Cổ Điển" })
-StealTab:Toggle({
-    Title = "Pure Tween Farm",
-    Desc = "Bay Tween mượt mà tới trứng mục tiêu theo đường cao tốc.",
-    Value = h.pureTweenFarm == true,
-    Callback = function(state)
-        h.pureTweenFarm = state
-        pcall(x)
-        if state then
-            task.spawn(wk)
-            notify("Farm", "🚀 Đã BẬT Pure Tween Farm!", "check", 2.0)
-        else
-            pcall(D4)
-            notify("Farm", "⏹️ Đã TẮT Pure Tween Farm!", "x", 2.0)
-        end
-    end,
-})
-StealTab:Toggle({
-    Title = "Auto Farm Loop (Tự cướp liên tục)",
-    Desc = "Vòng lặp tự động cướp trứng liên tục không nghỉ.",
-    Value = h.autoFarmLoop == true,
-    Callback = function(state)
-        h.autoFarmLoop = state
-        pcall(x)
-        if state then
-            task.spawn(jk)
-            notify("Farm", "🔄 Đã BẬT Auto Farm Loop!", "check", 2.0)
-        else
-            pcall(D4)
-            notify("Farm", "⏹️ Đã TẮT Auto Farm Loop!", "x", 2.0)
-        end
-    end,
+	Title = "Single Steal (Teleport)",
+	Desc = "Roba 1 huevo y regresa.",
+	Callback = function()
+		task.spawn(function()
+			if Y4 ~= "NONE" then T4("NONE") task.wait(0.2) end
+			local egg = N4()
+			if egg then
+				local ok = l4(egg, nil)
+				if ok then
+					pcall(u4)
+					if h.autoGlide then
+						Q4(h.glideSpeed)
+						u4()
+					end
+				end
+			end
+		end)
+	end,
 })
 
--- PLACE & HATCH TAB
-PlaceTab:Section({ Title = "Đặt & Ấp Trứng Tự Động" })
-PlaceTab:Toggle({
-    Title = "Tự bay về vườn sau khi cướp (Auto Return)",
-    Desc = "Bay an toàn về căn cứ vườn nhà ngay sau khi nhặt được trứng.",
-    Value = h.autoGlide ~= false,
-    Callback = function(state)
-        h.autoGlide = state
-        pcall(x)
-        notify("Safe Return", state and "🏡 Đã BẬT Tự bay về an toàn!" or "⚠️ Đã TẮT Tự bay về!", "home", 2.0)
-    end,
-})
-PlaceTab:Toggle({
-    Title = "Tự động ấp trứng (Auto Hatch)",
-    Desc = "Tự động mở trứng trong lò ấp khi đạt đủ thời gian.",
-    Value = h.autoHatch ~= false,
-    Callback = function(state)
-        h.autoHatch = state
-        pcall(x)
-        notify("Auto Hatch", state and "🐣 Đã BẬT Tự động ấp trứng!" or "⏹️ Đã TẮT Tự động ấp trứng!", "sparkles", 2.0)
-    end,
-})
-PlaceTab:Toggle({
-    Title = "Tự động đặt trứng mỗi 5 quả (Auto Place Every 5)",
-    Desc = "Gom đủ 5 quả trứng trong túi sẽ tự bay về đặt vào vườn.",
-    Value = h.autoPlaceEvery5 == true,
-    Callback = function(state)
-        h.autoPlaceEvery5 = state
-        pcall(x)
-        notify("Auto Place", state and "📦 Đã BẬT Đặt trứng mỗi 5 quả!" or "⏹️ Đã TẮT!", "box", 2.0)
-    end,
-})
+-- PLACE & HATCH
+PlaceTab:Section({ Title = "Place / Hatch" })
 PlaceTab:Button({
-    Title = "Đặt toàn bộ trứng vào vườn ngay (Place All Eggs)",
-    Desc = "Bay về vườn và đặt toàn bộ trứng trong người vào khay ấp.",
-    Callback = function()
-        notify("Place Eggs", "🏃 Đang bay về đặt trứng vào vườn...", "arrow-down", 2.0)
-        task.spawn(function()
-            pcall(s4)
-            pcall(y4)
-            notify("Place Eggs", "✅ Đã đặt toàn bộ trứng vào vườn!", "check", 2.0)
-        end)
-    end,
-})
-PlaceTab:Button({
-    Title = "Ấp tất cả trứng sẵn sàng (Hatch Ready Eggs)",
-    Desc = "Kích hoạt ấp ngay các quả trứng đã chín trong vườn.",
-    Callback = function()
-        task.spawn(function()
-            local count = pcall(J4, true)
-            notify("Hatch Eggs", "🎉 Đã kích hoạt ấp trứng sẵn sàng!", "sparkles", 2.0)
-        end)
-    end,
-})
-PlaceTab:Section({ Title = "Máy chạy bộ (Treadmill) & Trails" })
-PlaceTab:Toggle({
-    Title = "Tự động lên máy chạy (Auto Treadmill)",
-    Desc = "Tự động lên máy chạy bộ để cày tiền và kinh nghiệm khi rảnh.",
-    Value = h.autoTreadmill ~= false,
-    Callback = function(state)
-        h.autoTreadmill = state
-        pcall(x)
-    end,
+	Title = "Place Egg",
+	Desc = "Tween a casa, coloca huevos y hatch.",
+	Callback = function()
+		task.spawn(function()
+			h.statusText = "[Manual] Depositing eggs..."
+			g4(h.glideSpeed)
+			v4()
+			u4()
+			h.isReturning = false
+			h.delivering = false
+		end)
+	end,
 })
 PlaceTab:Toggle({
-    Title = "Tự động nâng cấp máy chạy (Auto Upgrade Treadmill)",
-    Desc = "Tự nâng cấp máy chạy bộ khi đủ tiền.",
-    Value = h.autoUpgradeTreadmill ~= false,
-    Callback = function(state)
-        h.autoUpgradeTreadmill = state
-        pcall(x)
-    end,
+	Title = "Auto Place (Every 5)",
+	Desc = "Cada 5 robos vuelve, coloca y espera 5s.",
+	Value = h.autoPlaceEvery5 == true,
+	Callback = function(state)
+		h.autoPlaceEvery5 = state
+		if not state then h.batchStealCount = 0 end
+	end,
 })
 PlaceTab:Toggle({
-    Title = "Tự động mua & trang bị Trails (Auto Buy Trails)",
-    Desc = "Tự mua và trang bị hiệu ứng chạy nhanh nhất.",
-    Value = h.autoBuyTrails ~= false,
-    Callback = function(state)
-        h.autoBuyTrails = state
-        pcall(x)
-    end,
+	Title = "Auto Hatch",
+	Value = h.autoHatch ~= false,
+	Callback = function(state) h.autoHatch = state end,
+})
+PlaceTab:Toggle({
+	Title = "Auto Return",
+	Desc = "Regresa a zona segura tras robar.",
+	Value = h.autoGlide ~= false,
+	Callback = function(state) h.autoGlide = state end,
+})
+PlaceTab:Toggle({
+	Title = "Auto Treadmill",
+	Desc = "Cinta cuando no hay huevos.",
+	Value = h.autoTreadmill ~= false,
+	Callback = function(state)
+		h.autoTreadmill = state
+		pcall(x)
+		pcall(n4)
+		if not state and (h.onTreadmill or (L4 and L4())) then
+			pcall(M4)
+		end
+	end,
 })
 
--- EGG SELECT TAB
-SelectTab:Section({ Title = "Lựa chọn Khu Vực & Độ Hiếm" })
-local function buildSelectedList(tbl, defaultList)
-    local out = {}
-    if tbl then
-        for k, v in pairs(tbl) do
-            if v == true then table.insert(out, k) end
-        end
-    end
-    if #out == 0 and defaultList then return defaultList end
-    return out
-end
-local function listToMap(list)
-    local map = {}
-    for _, v in ipairs(list) do map[v] = true end
-    return map
-end
-SelectTab:Dropdown({
-    Title = "Chọn khu vực cướp trứng (Zones)",
-    Desc = "Chọn các map bạn muốn cướp trứng.",
-    Multi = true,
-    Values = M,
-    Value = buildSelectedList(h.selectedZones, M),
-    Callback = function(values)
-        local selectedList = {}
-        if type(values) == "table" then
-            for k, v in pairs(values) do
-                if v == true then table.insert(selectedList, k)
-                elseif type(k) == "number" then table.insert(selectedList, v)
-                end
-            end
-        end
-        h.selectedZones = listToMap(selectedList)
-        pcall(x)
-    end,
+-- EGG SELECT (Principal) — listas multi-select, no toggles
+SelectTab:Section({ Title = "Filtros de farm" })
+SelectTab:Paragraph({
+	Title = "Como usar",
+	Desc = "Elige zonas y rarezas en las listas. Secret+ puede saltarse el filtro de zona si alwaysCollectSecretPlus esta activo.",
 })
+
+local function buildSelectedList(map, order)
+	local out = {}
+	if type(map) ~= "table" then return out end
+	for _, name in ipairs(order) do
+		if map[name] == true then
+			out[#out + 1] = name
+		end
+	end
+	return out
+end
+
+local function applyMultiSelect(map, order, selected)
+	if type(map) ~= "table" then map = {} end
+	local set = {}
+	if type(selected) == "table" then
+		for _, v in pairs(selected) do
+			if type(v) == "string" then set[v] = true end
+			if type(v) == "table" and type(v.Title) == "string" then set[v.Title] = true end
+		end
+		for i = 1, #selected do
+			local v = selected[i]
+			if type(v) == "string" then set[v] = true end
+		end
+	elseif type(selected) == "string" then
+		set[selected] = true
+	end
+	for _, name in ipairs(order) do
+		map[name] = set[name] == true
+	end
+	return map
+end
+
 SelectTab:Dropdown({
-    Title = "Chọn độ hiếm ưu tiên (Rarities)",
-    Desc = "Chỉ nhặt các độ hiếm được chọn.",
-    Multi = true,
-    Values = { "Divine", "Eternal", "Secret", "Cosmic", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common" },
-    Value = buildSelectedList(h.selectedRarities, { "Divine", "Eternal", "Secret", "Cosmic", "Mythic", "Legendary" }),
-    Callback = function(values)
-        local selectedList = {}
-        if type(values) == "table" then
-            for k, v in pairs(values) do
-                if v == true then table.insert(selectedList, k)
-                elseif type(k) == "number" then table.insert(selectedList, v)
-                end
-            end
-        end
-        h.selectedRarities = listToMap(selectedList)
-        pcall(x)
-    end,
+	Title = "Zonas objetivo",
+	Desc = "Lista multi-select de zonas a farmear.",
+	Values = M,
+	Value = buildSelectedList(h.selectedZones, M),
+	Multi = true,
+	AllowNone = true,
+	Callback = function(selected)
+		if not h.selectedZones then h.selectedZones = {} end
+		applyMultiSelect(h.selectedZones, M, selected)
+		pcall(x)
+	end,
 })
+
+SelectTab:Dropdown({
+	Title = "Rarezas objetivo",
+	Desc = "Lista multi-select de rarezas a recolectar.",
+	Values = X,
+	Value = buildSelectedList(h.selectedRarities, X),
+	Multi = true,
+	AllowNone = true,
+	Callback = function(selected)
+		if not h.selectedRarities then h.selectedRarities = {} end
+		applyMultiSelect(h.selectedRarities, X, selected)
+		pcall(x)
+	end,
+})
+
 SelectTab:Toggle({
-    Title = "Luôn cướp Secret+ (Bất kể khoảng cách)",
-    Desc = "Tự động ưu tiên cướp các quả trứng Secret, Eternal, Divine dù ở bất kỳ map nào.",
-    Value = h.alwaysCollectSecretPlus ~= false,
-    Callback = function(state)
-        h.alwaysCollectSecretPlus = state
-        pcall(x)
-        if state then
-            notify("Egg Select", "🌟 Đã BẬT Luôn cướp Secret+!", "sparkles", 2.0)
-        else
-            notify("Egg Select", "⏹️ Đã TẮT Luôn cướp Secret+!", "x", 2.0)
-        end
-    end,
+	Title = "Always Steal Secret+",
+	Desc = "Siempre roba Secret/Eternal/Divine aunque la zona no este seleccionada.",
+	Value = h.alwaysCollectSecretPlus ~= false,
+	Callback = function(state)
+		h.alwaysCollectSecretPlus = state
+		pcall(x)
+	end,
 })
 
--- ESP TAB
-EspTab:Section({ Title = "Thị Giác ESP Trứng (Egg ESP)" })
+-- CHARACTER
+CharTab:Section({ Title = "Safety" })
+CharTab:Toggle({
+	Title = "Godmode",
+	Desc = "Invencible ante guards (desync).",
+	Value = false,
+	Callback = function(state)
+		if state then
+			pcall(enableDesyncGodmode)
+		else
+			pcall(disableDesyncGodmode)
+		end
+	end,
+})
+CharTab:Toggle({
+	Title = "Anti Trap",
+	Desc = "Miễn nhiễm 100% với bẫy bản đồ.",
+	Value = h.antiTrap ~= false,
+	Callback = function(state)
+		h.antiTrap = state
+		if state then pcall(scanAndNeutralizeTraps) end
+	end,
+})
+CharTab:Button({
+	Title = "Get Out Treadmill",
+	Callback = function()
+		pcall(M4)
+		pcall(C4)
+		pcall(D4)
+	end,
+})
+CharTab:Button({
+	Title = "Reset Character State",
+	Callback = function()
+		pcall(D4)
+		pcall(u4)
+	end,
+})
+
+-- ESP TRỨNG (WORLD & VƯỜN NHÀ)
+EspTab:Section({ Title = "ESP Trứng (World & Vườn)" })
 EspTab:Toggle({
-    Title = "Bật ESP Trứng Đầy Đủ (Egg ESP Cards)",
-    Desc = "Hiển thị thẻ bài đẹp mắt: Tên thú cưng, Avatar, Số tiền $/s, Độ hiếm (Cả trứng ngoài bản đồ & Trong vườn nhà bạn).",
-    Value = h.espWorldEgg ~= false,
-    Callback = function(state)
-        h.espWorldEgg = state
-        if state then
-            pcall(refreshWorldEggEsp)
-            notify("ESP Trứng", "👁️ Đã BẬT Thẻ ESP Trứng & Vườn!", "eye", 2.0)
-        else
-            pcall(clearEggCardEsp)
-            notify("ESP Trứng", "⏹️ Đã TẮT Thẻ ESP Trứng!", "eye-off", 2.0)
-        end
-    end,
+	Title = "Bật Thẻ Bài ESP Trứng",
+	Desc = "Hiển thị Tên Pet, Avatar, Độ hiếm và Tiền ($/s) cả trên Map và trong Vườn nhà.",
+	Value = h.espWorldEgg ~= false,
+	Callback = function(state)
+		h.espWorldEgg = state
+		if state then
+			pcall(refreshWorldEggEsp)
+		else
+			pcall(clearEggCardEsp)
+		end
+	end,
 })
 EspTab:Slider({
-    Title = "Khoảng cách quét ESP (Max Distance)",
-    Desc = "Khoảng cách tối đa hiển thị thẻ bài ESP (100 - 10000m).",
-    Step = 100,
-    Value = { Min = 100, Max = 10000, Default = h.espMaxDist or 5000 },
-    Callback = function(v)
-        h.espMaxDist = tonumber(v) or 5000
-    end,
+	Title = "Khoảng cách quét (Max Distance)",
+	Step = 100,
+	Value = { Min = 100, Max = 10000, Default = h.espMaxDist or 5000 },
+	Callback = function(v)
+		h.espMaxDist = tonumber(v) or 5000
+	end,
 })
 EspTab:Button({
-    Title = "Làm mới ESP ngay (Force Refresh ESP)",
-    Desc = "Quét lại toàn bộ trứng trên bản đồ và trong vườn nhà, cập nhật thẻ số tiền $/s.",
-    Callback = function()
-        pcall(refreshWorldEggEsp)
-        notify("ESP Trứng", "🔄 Đã quét và cập nhật toàn bộ ESP Trứng & Vườn!", "check", 2.0)
-    end,
+	Title = "Làm mới ESP Trứng ngay",
+	Callback = function()
+		pcall(refreshWorldEggEsp)
+	end,
 })
 
--- CHARACTER TAB
-CharTab:Section({ Title = "An toàn & Nhân vật" })
-CharTab:Toggle({
-    Title = "Bất tử (Godmode)",
-    Desc = "Kháng 100% sát thương, bẫy và lính gác (Desync Godmode).",
-    Value = false,
-    Callback = function(state)
-        if state then
-            pcall(enableDesyncGodmode)
-            notify("Godmode", "🛡️ Đã BẬT Bất tử (Godmode)!", "shield-check", 2.5)
-        else
-            pcall(disableDesyncGodmode)
-            notify("Godmode", "⚠️ Đã TẮT Bất tử!", "shield-alert", 2.0)
-        end
-    end,
-})
-CharTab:Toggle({
-    Title = "Chống bẫy bản đồ (Anti Trap)",
-    Desc = "Miễn nhiễm 100% với bẫy (bear trap, mìn, gai) khi đi hoặc cầm trứng.",
-    Value = h.antiTrap ~= false,
-    Callback = function(state)
-        h.antiTrap = state
-        if state then
-            pcall(scanAndNeutralizeTraps)
-            notify("Anti Trap", "🛡️ Đã BẬT Miễn nhiễm bẫy!", "shield-check", 2.0)
-        else
-            notify("Anti Trap", "⚠️ Đã TẮT Miễn nhiễm bẫy!", "shield-alert", 2.0)
-        end
-    end,
-})
-CharTab:Button({
-    Title = "Rời khỏi máy chạy (Get Out Treadmill)",
-    Desc = "Xuống khỏi máy chạy bộ ngay lập tức.",
-    Callback = function()
-        pcall(M4)
-        pcall(C4)
-        pcall(D4)
-        notify("Character", "🏃 Đã rời khỏi máy chạy bộ!", "check", 2.0)
-    end,
-})
-CharTab:Button({
-    Title = "Reset trạng thái nhân vật (Reset State)",
-    Desc = "Xóa toàn bộ kẹt, mở khóa di chuyển cho nhân vật.",
-    Callback = function()
-        pcall(D4)
-        pcall(u4)
-        notify("Character", "🔄 Đã reset trạng thái nhân vật!", "check", 2.0)
-    end,
-})
-CharTab:Slider({
-    Title = "Tốc độ bay (Flight Speed)",
-    Desc = "Tốc độ bay lượn (Cruise speed) khi đi cướp trứng.",
-    Step = 25,
-    Value = { Min = 100, Max = 1000, Default = h.glideSpeed or 600 },
-    Callback = function(v)
-        h.glideSpeed = math.clamp(math.floor(v), 100, 1000)
-        pcall(Y, h.glideSpeed)
-    end,
-})
-
--- SETTINGS TAB
-SettingsTab:Section({ Title = "Cài đặt hệ thống" })
-local currentToggleKey = Enum.KeyCode.RightControl
-pcall(function()
-    SettingsTab:Keybind({
-        Title = "Phím tắt mở/đóng Menu (Set Key)",
-        Desc = "Bấm vào đây rồi nhấn phím bất kỳ để gán phím tắt ẩn/hiện menu.",
-        Value = "RightControl",
-        Callback = function(key)
-            if typeof(key) == "EnumItem" then
-                currentToggleKey = key
-            elseif type(key) == "string" and Enum.KeyCode[key] then
-                currentToggleKey = Enum.KeyCode[key]
-            end
-            notify("Cài đặt", "⌨️ Đã gán phím tắt mở menu: " .. tostring(currentToggleKey.Name), "keyboard", 2.5)
-        end,
-    })
-end)
-w.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == currentToggleKey then
-        pcall(function()
-            if Window.Toggle then
-                Window:Toggle()
-            elseif Window.UIElements and Window.UIElements.Main then
-                Window.UIElements.Main.Visible = not Window.UIElements.Main.Visible
-            end
-        end)
-    end
-end)
-SettingsTab:Button({
-    Title = "Ẩn / Hiện giao diện (Toggle Window)",
-    Desc = "Bấm để đóng hoặc mở lại giao diện menu DuyMinh EGG.",
-    Callback = function()
-        pcall(function()
-            if Window.Toggle then
-                Window:Toggle()
-            elseif Window.UIElements and Window.UIElements.Main then
-                Window.UIElements.Main.Visible = not Window.UIElements.Main.Visible
-            end
-        end)
-    end,
+-- SETTINGS
+SettingsTab:Toggle({
+	Title = "Anti AFK",
+	Value = h.antiAFK ~= false,
+	Callback = function(state)
+		h.antiAFK = state
+		pcall(x)
+	end,
 })
 SettingsTab:Toggle({
-    Title = "Chống AFK 20 phút (Anti AFK)",
-    Desc = "Ngăn chặn Roblox kick khi treo máy qua đêm.",
-    Value = h.antiAFK ~= false,
-    Callback = function(state)
-        h.antiAFK = state
-        pcall(x)
-        if state then
-            notify("Anti AFK", "⏰ Đã BẬT Chống AFK!", "clock", 2.0)
-        else
-            notify("Anti AFK", "⏹️ Đã TẮT Chống AFK!", "x", 2.0)
-        end
-    end,
+	Title = "Performance Mode",
+	Value = h.performanceMode == true,
+	Callback = function(state)
+		h.performanceMode = state
+		pcall(x)
+		if state and Mk then task.spawn(Mk) end
+	end,
 })
 SettingsTab:Toggle({
-    Title = "Chế độ mượt siêu nhẹ (Potato Mode)",
-    Desc = "Tắt toàn bộ texture, bóng đổ, hiệu ứng để tăng tối đa FPS.",
-    Value = h.performanceMode == true,
-    Callback = function(state)
-        h.performanceMode = state
-        pcall(x)
-        if state and Mk then
-            task.spawn(Mk)
-            notify("Performance", "🚀 Đã BẬT Chế độ mượt siêu nhẹ!", "zap", 2.0)
-        else
-            if Ik then task.spawn(Ik) end
-            notify("Performance", "⏹️ Đã TẮT Chế độ mượt!", "x", 2.0)
-        end
-    end,
-})
-SettingsTab:Toggle({
-    Title = "Tắt 3D Rendering (Tiết kiệm GPU 95%)",
-    Desc = "Dừng vẽ hình 3D, giảm tải card đồ họa xuống ~1% khi treo đêm.",
-    Value = h.disable3D == true,
-    Callback = function(state)
-        h.disable3D = state
-        pcall(x)
-        pcall(function()
-            y:Set3dRenderingEnabled(not state)
-        end)
-        if state then
-            notify("GPU Saver", "💤 Đã TẮT vẽ 3D - Tiết kiệm 95% GPU!", "eye-off", 2.5)
-        else
-            notify("GPU Saver", "👁️ Đã BẬT lại hiển thị 3D bình thường!", "eye", 2.0)
-        end
-    end,
+	Title = "Disable 3D Rendering",
+	Value = h.disable3D == true,
+	Callback = function(state)
+		h.disable3D = state
+		pcall(x)
+		pcall(function()
+			y:Set3dRenderingEnabled(not state)
+		end)
+	end,
 })
 SettingsTab:Button({
-    Title = "Đóng hoàn toàn Script (Unload Script)",
-    Desc = "Dừng toàn bộ vòng lặp, xóa ESP và đóng menu an toàn.",
-    Callback = function()
-        notify("DuyMinh EGG", "👋 Đang đóng script hoàn toàn...", "x", 2.0)
-        pcall(clearEggCardEsp)
-        pcall(aM)
-        pcall(function() Window:Destroy() end)
-    end,
+	Title = "Unload Script",
+	Callback = function()
+		pcall(clearEggCardEsp)
+		pcall(aM)
+		pcall(function() Window:Destroy() end)
+	end,
 })
 
-print("[DuyMinh EGG] WindUI Red Edition loaded successfully!")
+print("[Vortex X Sage] Steal An Egg WindUI loaded")
+
 task.spawn(function()
 	task.wait(0.5)
 	pcall(A4)
+	pcall(function() b4(true) end)
 	pcall(C4)
 	if o.Character then
 		pcall(z4, o.Character)
@@ -5553,9 +5411,7 @@ o.CharacterAdded:Connect(function(char)
 		pcall(n4)
 		pcall(C4)
 		pcall(A4)
-		if h.godmode then
-			pcall(function() b4(true) end)
-		end
+		pcall(function() b4(true) end)
 		pcall(z4, char)
 		pcall(u4)
 		pcall(scanAndNeutralizeTraps)
@@ -5566,4 +5422,7 @@ if h.performanceMode then
 end
 if h.disable3D then
 	pcall(function() y:Set3dRenderingEnabled(false) end)
+end
+if h.antiAFK then
+	pcall(function() if bk then task.spawn(bk) end end)
 end
