@@ -82,6 +82,9 @@ if typeof(hookmetamethod) == "function" and not _G._ZenithAntiKickHooked then
             warn("[Zenith BAC Bypass] Blocked __namecall Kick attempt: ", ...)
             return nil
         end
+        if (method == "FireServer" or method == "InvokeServer") and self and (string.find(tostring(self.Name), "ForestStrike") or string.find(tostring(self.Name), "Strike")) then
+            return nil
+        end
         return oldNamecall(self, ...)
     end))
 end
@@ -3836,10 +3839,13 @@ N4=function(...)
         local function a(e,...)
             local r=e.RarityTier or 0
             local y=e.ZoneWeight or 50
+            local yPos = (e.Position and e.Position.Y) or 0
+            -- ƯU TIÊN TRỨNG Ở TRÊN CAO (Y >= 30 là các bục, cột cao):
+            local heightScore = (yPos >= 30 and (50000 + (yPos * 500))) or (math.max(0, yPos - 15) * 100)
             if r>= 4 then
-                return( 400000 +(r* 10000 ))+y
+                return( 400000 +(r* 10000 ))+y + heightScore
             else
-                return(y* 11 )+(r* 1000 )
+                return(y* 11 )+(r* 1000 ) + heightScore
             end
         end
         table.sort (u,function(e,r,...)
@@ -3847,6 +3853,11 @@ N4=function(...)
             local u=a(r)
             if y~=u then
                 return y>u
+            end
+            local y1 = (e.Position and e.Position.Y) or 0
+            local y2 = (r.Position and r.Position.Y) or 0
+            if math.abs(y1 - y2) > 2 then
+                return y1 > y2 -- Ưu tiên tuyệt đối trứng ở trên cao hơn
             end
             if e.ZoneWeight ~=r.ZoneWeight then
                 return e.ZoneWeight >r.ZoneWeight
@@ -3863,7 +3874,9 @@ N4=function(...)
         local o=u[ 1 ]
         local V={}
         for e= 1 ,math.min ( 3 ,#u), 1 do
-            local r=u[e]table.insert (V,string.format ( "#%d %s[%s|%s] Score:%d $%s/s (%.1fx) dist=%dm" ,e,tostring(r.Category ),tostring(r.Rarity ),tostring(r.Area ),a(r),j(r.RealIncome ),tonumber(r.Scale )or 1 ,math.floor (tonumber(r.Distance )or 0 )))
+            local r=u[e]
+            local yPos = (r.Position and r.Position.Y) or 0
+            table.insert (V,string.format ( "#%d %s[%s|%s] Score:%d Y=%.0f $%s/s (%.1fx) dist=%dm" ,e,tostring(r.Category ),tostring(r.Rarity ),tostring(r.Area ),a(r),yPos,j(r.RealIncome ),tonumber(r.Scale )or 1 ,math.floor (tonumber(r.Distance )or 0 )))
         end
         if#V> 0 then
             H( "[AutoSteal v42.44] " ..table.concat (V, " | " ))
@@ -3918,12 +3931,13 @@ U4=function(e,u,w,j,...)
         end
         )
     end
-    h.statusText = "[1/4] Lifting Egg to Trigger Guard..." H(string.format ( "[GuardStrike] Step 1: Lifting target egg (%s)..." ,tostring(e)))
-    local p=os.clock ()+ 3.5
+    h.statusText = "[AutoSteal] Picking up target egg..." H(string.format ( "[AutoSteal] Lifting target egg (%s)..." ,tostring(e)))
+    local p=os.clock ()+ 3.0
     local B= 0
-    while not w4()and(os.clock ()<p and(h.alive and h.securingEgg ))do
+    local lastInvoke = 0
+    while not w4(e) and not e4() and(os.clock ()<p and(h.alive and h.securingEgg ))do
         if j and O4~=j then
-            t( "[GuardStrike] Cancelled by session switch in Step 1" )
+            t( "[AutoSteal] Cancelled by session switch during pickup" )
             break
         end
         if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
@@ -3933,17 +3947,18 @@ U4=function(e,u,w,j,...)
             B=os.clock ()
             local r,y=k4(e)
             if not r and y== "CarriedByOther" then
-                t(string.format ( "[GuardStrike] Target egg %s was snatched by another player! Aborting pickup..." ,tostring(e)))
+                t(string.format ( "[AutoSteal] Target egg %s was snatched by another player! Aborting pickup..." ,tostring(e)))
                 break
             end
         end
         k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))d4(w,s)
-        if e and i then
+        if e and i and (os.clock() - lastInvoke >= 0.25) then
+            lastInvoke = os.clock()
             task.spawn (function(...) pcall(function(...)
                     if i:IsA( "RemoteFunction" )then
-                        i:InvokeServer({[ "Uid" ]=e})i:InvokeServer(e)
+                        i:InvokeServer({[ "Uid" ]=e})
                     else
-                        i:FireServer({[ "Uid" ]=e})i:FireServer(e)
+                        i:FireServer({[ "Uid" ]=e})
                     end
                 end
                 )
@@ -3951,92 +3966,22 @@ U4=function(e,u,w,j,...)
             )
         end
         y.Heartbeat :Wait()
-    end
-    if not w4()then
-        t( "[GuardStrike] Initial egg pickup timed out or egg was stolen" )
-        if e then
-            X4[e]=os.clock ()+ 2
-        end
-        h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
-        return false
-    end
-    h.statusText = "[2/4] Waiting for Guard Strike..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
-    local J=os.clock ()
-    local K=J+ 2.0
-    local c= false
-    while (e4() or w4()) and (os.clock ()<K and(h.alive and h.securingEgg ))do
-        if j and O4~=j then
-            t( "[GuardStrike] Cancelled by session switch in Step 2" )
-            break
-        end
-        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
-            break
-        end
-        -- Bị đánh rơi trứng -> THOÁT NGAY LẬP TỨC TRONG 0s để nhặt lại!
-        if not e4() then
-            break
-        end
-        k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))V4(s, 14 )
-        if P and not c then
-            task.spawn (function(...) pcall(function(...)
-                    if P:IsA( "RemoteFunction" )then
-                        P:InvokeServer()
-                    else
-                        P:FireServer()
-                    end
-                end
-                )
-            end
-            )c= true
-        end
-        -- Nếu đã kích hoạt đòn đánh và trôi qua 0.8s thì thoát ngay
-        if c and (os.clock() - J >= 0.8) then
-            break
-        end
-        y.Heartbeat :Wait()
-    end
-    h.statusText = "[3/4] Re-grabbing Egg..." H( "[GuardStrike] Step 3: Guard struck! Re-grabbing egg instantly..." )
-    local v=os.clock ()+ 2.5
-    while not e4() and not j4(e) and (os.clock ()<v and(h.alive and h.securingEgg ))do
-        if j and O4~=j then
-            t( "[GuardStrike] Cancelled by session switch in Step 3" )
-            break
-        end
-        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
-            break
-        end
-        k:PivotTo(u*CFrame.new ( 0 , 0.4 , 0 ))d4(w,s)
-        if e and i then
-            task.spawn (function(...) pcall(function(...)
-                    if i:IsA( "RemoteFunction" )then
-                        i:InvokeServer({[ "Uid" ]=e})i:InvokeServer(e)
-                    else
-                        i:FireServer({[ "Uid" ]=e})i:FireServer(e)
-                    end
-                end
-                )
-            end
-            )
-        end
-        y.Heartbeat :Wait()
-    end
-    local R=e4() or j4(e)
-    if not R then
-        R=j4(e)
     end
     h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
     if j and O4~=j then
         return false
     end
+    local R=e4() or w4(e) or j4(e)
     if R then
-        H( "[GuardStrike] Egg successfully secured after guard strike! Carrying to Safe Line..." )h.statusText = "Egg Secured! Carrying along Z=-360 to Safe Line..."
+        H( "[AutoSteal] Egg successfully secured! Gliding smoothly to Safe Line X=525..." )h.statusText = "Egg Secured! Carrying along Z=-360 to Safe Line..."
+        return true
     else
-        t( "[-] Failed to re-grab egg after guard strike (stolen or despawned)" )h.statusText = "[-] Failed to re-grab egg"
+        t( "[-] Failed to pick up egg (stolen or despawned)" )h.statusText = "[-] Failed to pick up egg"
         if e then
             X4[e]=os.clock ()+ 2
         end
+        return false
     end
-    return R
 end
 l4=function(e,u,...)
     if h.teleporting or h.glidingToTarget or h.delivering or h.securingEgg then
@@ -4325,7 +4270,7 @@ local Ck=os.clock ()task.spawn (function(...)
                                 end
                                 if r then
                                     if h.autoGlide then
-                                        h.statusText = "[AutoSteal] Secured! Tweening to Safe Line X=525..." H( "[AutoSteal] Egg secured after Guard Strike! Returning smoothly to Safe Line X=525 along Z=-360..." )Q4(h.glideSpeed ,u)pcall(u4)
+                                        h.statusText = "[AutoSteal] Secured! Tweening to Safe Line X=525..." H( "[AutoSteal] Egg secured! Returning smoothly to Safe Line X=525 along Z=-360..." )Q4(h.glideSpeed ,u)pcall(u4)
                                         local r=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next steal..." ,r)H(string.format ( "[AutoSteal] Egg stashed in bag (%d total eggs). Delivered! Next steal..." ,r))
                                     else
                                         h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
@@ -4336,7 +4281,7 @@ local Ck=os.clock ()task.spawn (function(...)
                                     end
                                 else
                                     if O4==u and(h.pureTweenFarm and Y4== "TWEEN" )then
-                                        t( "[AutoSteal] Guard Strike or Re-grab failed. Retrying with next egg..." )X4[w.Uid ]=os.clock ()+ 5 D4()
+                                        t( "[AutoSteal] Egg pickup failed or timed out. Retrying with next egg..." )X4[w.Uid ]=os.clock ()+ 5 D4()
                                     end
                                 end
                             else
