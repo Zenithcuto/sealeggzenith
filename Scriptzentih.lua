@@ -12,6 +12,698 @@ local Window=nil
 local currentLang="EN"
 local executorCheckCaller=typeof(checkcaller)=="function" and checkcaller or function() return false end
 local safeNewCClosure=typeof(newcclosure)=="function" and newcclosure or function(fn) return fn end
+
+-- ==============================================================================
+-- [ZENITH ANTI-CHEAT BYPASS & ANTI-KICK SYSTEM] (Fix CODE BAC 1513)
+-- ==============================================================================
+local function bypassClientDetections()
+    local blocked = 0
+    local setMeta = (typeof(setrawmetatable) == "function" and setrawmetatable)
+        or (typeof(setmetatable) == "function" and setmetatable)
+    if not setMeta then return false, "no setmeta" end
+
+    -- Method 1: filtergc (Solara / Wave / Synapse Z / Delta)
+    if typeof(filtergc) == "function" and typeof(debug) == "table" and typeof(debug.getupvalues) == "function" then
+        local ok, fn = pcall(function()
+            return filtergc("function", { Constants = { "gmatch", "GetFullName" } }, true)
+        end)
+        if ok and type(fn) == "function" then
+            local okUv, ups = pcall(debug.getupvalues, fn)
+            if okUv and type(ups) == "table" then
+                for _, tbl in pairs(ups) do
+                    if typeof(tbl) == "table" then
+                        local okSet = pcall(setMeta, tbl, { __newindex = function() end })
+                        if okSet then blocked = blocked + 1 end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Method 2: getgc fallback
+    if blocked == 0 and typeof(getgc) == "function" and typeof(debug) == "table" and typeof(debug.getconstants) == "function" and typeof(debug.getupvalues) == "function" then
+        pcall(function()
+            for _, obj in pairs(getgc(true)) do
+                if type(obj) == "function" and (typeof(isexecutorclosure) ~= "function" or not isexecutorclosure(obj)) then
+                    local okConst, consts = pcall(debug.getconstants, obj)
+                    if okConst and type(consts) == "table" then
+                        local hasGmatch, hasFullName = false, false
+                        for _, c in pairs(consts) do
+                            if c == "gmatch" then hasGmatch = true end
+                            if c == "GetFullName" then hasFullName = true end
+                        end
+                        if hasGmatch and hasFullName then
+                            local okUv, ups = pcall(debug.getupvalues, obj)
+                            if okUv and type(ups) == "table" then
+                                for _, tbl in pairs(ups) do
+                                    if typeof(tbl) == "table" then
+                                        local okSet = pcall(setMeta, tbl, { __newindex = function() end })
+                                        if okSet then blocked = blocked + 1 end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    return blocked > 0, blocked
+end
+pcall(bypassClientDetections)
+
+-- Anti-Kick Protection (__namecall hook & LocalPlayer.Kick hook)
+if typeof(hookmetamethod) == "function" and not _G._ZenithAntiKickHooked then
+    _G._ZenithAntiKickHooked = true
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", safeNewCClosure(function(self, ...)
+        local method = getnamecallmethod()
+        if not executorCheckCaller() and (method == "Kick" or method == "kick") and (self == o or self == e.LocalPlayer) then
+            warn("[Zenith BAC Bypass] Blocked __namecall Kick attempt: ", ...)
+            return nil
+        end
+        return oldNamecall(self, ...)
+    end))
+end
+
+if typeof(hookfunction) == "function" and not _G._ZenithHookKickFunction then
+    _G._ZenithHookKickFunction = true
+    pcall(function()
+        local lp = e.LocalPlayer
+        if lp and typeof(lp.Kick) == "function" then
+            local oldKick
+            oldKick = hookfunction(lp.Kick, safeNewCClosure(function(self, ...)
+                if not executorCheckCaller() and (self == o or self == lp) then
+                    warn("[Zenith BAC Bypass] Blocked direct LocalPlayer:Kick attempt: ", ...)
+                    return nil
+                end
+                return oldKick(self, ...)
+            end))
+        end
+    end)
+end
+
+-- ==============================================================================
+-- [ZENITH AUTHENTICATION & LOGIN FORM SYSTEM]
+-- Server: zenithauth.cu.ma (Owner: admin, API: script)
+-- Link4m Token: 6a11af03c365c0293240e181
+-- ==============================================================================
+local function getHWID()
+    local hwid = ""
+    pcall(function()
+        if typeof(gethwid) == "function" then
+            hwid = gethwid()
+        elseif typeof(identifyexecutor) == "function" and typeof(getexecutorname) == "function" then
+            local rbxId = game:GetService("RbxAnalyticsService"):GetClientId()
+            hwid = identifyexecutor() .. "_" .. tostring(rbxId)
+        else
+            hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+        end
+    end)
+    if not hwid or hwid == "" then
+        hwid = tostring(o.UserId)
+    end
+    return tostring(hwid)
+end
+
+local HWID = getHWID()
+local KEY_FILE = "zenith_key.txt"
+local LINK4M_TOKEN = "6a11af03c365c0293240e181"
+
+-- Foreign Header Simulation & Fast Request Wrapper
+local function fastRequest(options)
+    local reqFn = (syn and syn.request) or (http and http.request) or http_request or request or (fluxus and fluxus.request)
+    local headers = {
+        ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        ["Accept"] = "application/json, text/plain, */*",
+        ["Accept-Language"] = "en-US,en;q=0.9",
+        ["X-Forwarded-For"] = "104.16.132.229",
+        ["CF-Connecting-IP"] = "104.16.132.229",
+        ["Client-IP"] = "104.16.132.229",
+        ["Connection"] = "keep-alive",
+        ["Cache-Control"] = "no-cache"
+    }
+    if options.Headers then
+        for k, v in pairs(options.Headers) do
+            headers[k] = v
+        end
+    end
+    options.Headers = headers
+
+    if reqFn then
+        for attempt = 1, 3 do
+            local ok, res = pcall(reqFn, options)
+            if ok and res and res.Body then
+                return res.Body, res.StatusCode
+            end
+            task.wait(0.25)
+        end
+    end
+
+    if options.Method == "GET" or not options.Method then
+        for attempt = 1, 3 do
+            local ok, body = pcall(function()
+                return game:HttpGet(options.Url)
+            end)
+            if ok and body and body ~= "" then
+                return body, 200
+            end
+            task.wait(0.25)
+        end
+    end
+    return nil, 0
+end
+
+local function verifyKey(key)
+    if not key or key == "" then
+        return false, "Vui lòng nhập Key!", 0
+    end
+    local url = string.format("http://zenithauth.cu.ma/verify.php?owner=admin&api=script&key=%s&hwid=%s",
+        a:UrlEncode(key),
+        a:UrlEncode(HWID)
+    )
+    local body, status = fastRequest({ Url = url, Method = "GET" })
+    if not body or body == "" then
+        return false, "Không thể kết nối máy chủ ZenithAuth (Timeout)! Vui lòng thử lại.", 0
+    end
+    local ok, json = pcall(function()
+        return a:JSONDecode(body)
+    end)
+    if not ok or type(json) ~= "table" then
+        return false, "Phản hồi máy chủ không hợp lệ!", 0
+    end
+    return (json.valid == true), json.message or (json.valid and "Đăng nhập thành công!" or "Key không hợp lệ!"), json.expiry or 0
+end
+
+local function shortenLink4m(targetUrl)
+    local api = string.format("https://link4m.co/api-shorten/v2?api=%s&url=%s",
+        LINK4M_TOKEN,
+        a:UrlEncode(targetUrl)
+    )
+    local body = fastRequest({ Url = api, Method = "GET" })
+    if body then
+        local ok, data = pcall(function()
+            return a:JSONDecode(body)
+        end)
+        if ok and data and data.status == "success" and data.shortenedUrl then
+            return data.shortenedUrl
+        end
+    end
+    return targetUrl
+end
+
+local function readSavedKey()
+    local k = ""
+    pcall(function()
+        if isfile and isfile(KEY_FILE) then
+            k = readfile(KEY_FILE)
+        end
+    end)
+    return (k and type(k) == "string") and k:gsub("%s+", "") or ""
+end
+
+local function saveKey(k)
+    pcall(function()
+        if writefile then
+            writefile(KEY_FILE, tostring(k))
+        end
+    end)
+end
+
+-- Auto-login with saved key
+local savedKey = readSavedKey()
+if savedKey ~= "" then
+    local okValid, okMsg = verifyKey(savedKey)
+    if okValid then
+        _G.ZenithAuthenticated = true
+        print("[ZenithAuth] Tự động đăng nhập thành công với Key đã lưu: " .. savedKey)
+    end
+end
+
+-- If not authenticated, open Login UI
+if not _G.ZenithAuthenticated then
+    local parentGui = nil
+    pcall(function()
+        if gethui then
+            parentGui = gethui()
+        elseif game:GetService("CoreGui") and pcall(function() return game:GetService("CoreGui").Name end) then
+            parentGui = game:GetService("CoreGui")
+        else
+            parentGui = o:WaitForChild("PlayerGui", 5)
+        end
+    end)
+    if not parentGui then parentGui = o:WaitForChild("PlayerGui") end
+
+    if parentGui:FindFirstChild("ZenithAuth_LoginUI") then
+        parentGui.ZenithAuth_LoginUI:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ZenithAuth_LoginUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.DisplayOrder = 999999
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.Parent = parentGui
+
+    local DimOverlay = Instance.new("Frame")
+    DimOverlay.Name = "DimOverlay"
+    DimOverlay.Size = UDim2.new(1, 0, 1, 0)
+    DimOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    DimOverlay.BackgroundTransparency = 0.5
+    DimOverlay.BorderSizePixel = 0
+    DimOverlay.Parent = ScreenGui
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 480, 0, 420)
+    MainFrame.Position = UDim2.new(0.5, -240, 0.5, -210)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(255, 51, 68)
+    MainStroke.Thickness = 1.5
+    MainStroke.Transparency = 0.3
+    MainStroke.Parent = MainFrame
+
+    -- Dragging
+    local dragging, dragInput, dragStart, startPos
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    MainFrame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    w.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- Top Header
+    local TopBar = Instance.new("Frame")
+    TopBar.Name = "TopBar"
+    TopBar.Size = UDim2.new(1, 0, 0, 50)
+    TopBar.BackgroundColor3 = Color3.fromRGB(19, 21, 28)
+    TopBar.BorderSizePixel = 0
+    TopBar.Parent = MainFrame
+
+    local TopCorner = Instance.new("UICorner")
+    TopCorner.CornerRadius = UDim.new(0, 14)
+    TopCorner.Parent = TopBar
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "TitleLabel"
+    TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 18, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "ZENITH AUTH <font color='#ff3344'>•</font> KEY SYSTEM"
+    TitleLabel.RichText = true
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextSize = 17
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TopBar
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Name = "CloseBtn"
+    CloseBtn.Size = UDim2.new(0, 32, 0, 32)
+    CloseBtn.Position = UDim2.new(1, -42, 0, 9)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 33, 44)
+    CloseBtn.Text = "✕"
+    CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 95)
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.TextSize = 14
+    CloseBtn.Parent = TopBar
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 8)
+    CloseCorner.Parent = CloseBtn
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    -- HWID Bar
+    local HwidCard = Instance.new("Frame")
+    HwidCard.Name = "HwidCard"
+    HwidCard.Size = UDim2.new(1, -36, 0, 34)
+    HwidCard.Position = UDim2.new(0, 18, 0, 60)
+    HwidCard.BackgroundColor3 = Color3.fromRGB(11, 12, 16)
+    HwidCard.BorderSizePixel = 0
+    HwidCard.Parent = MainFrame
+
+    local HwidCorner = Instance.new("UICorner")
+    HwidCorner.CornerRadius = UDim.new(0, 6)
+    HwidCorner.Parent = HwidCard
+
+    local HwidLabel = Instance.new("TextLabel")
+    HwidLabel.Size = UDim2.new(1, -95, 1, 0)
+    HwidLabel.Position = UDim2.new(0, 10, 0, 0)
+    HwidLabel.BackgroundTransparency = 1
+    HwidLabel.Text = "HWID: " .. string.sub(HWID, 1, 28) .. "..."
+    HwidLabel.TextColor3 = Color3.fromRGB(150, 160, 180)
+    HwidLabel.Font = Enum.Font.Code
+    HwidLabel.TextSize = 12
+    HwidLabel.TextXAlignment = Enum.TextXAlignment.Left
+    HwidLabel.Parent = HwidCard
+
+    local CopyHwidBtn = Instance.new("TextButton")
+    CopyHwidBtn.Size = UDim2.new(0, 80, 0, 24)
+    CopyHwidBtn.Position = UDim2.new(1, -85, 0, 5)
+    CopyHwidBtn.BackgroundColor3 = Color3.fromRGB(26, 30, 42)
+    CopyHwidBtn.Text = "COPY HWID"
+    CopyHwidBtn.TextColor3 = Color3.fromRGB(0, 220, 255)
+    CopyHwidBtn.Font = Enum.Font.GothamBold
+    CopyHwidBtn.TextSize = 10
+    CopyHwidBtn.Parent = HwidCard
+    local CopyHwidCorner = Instance.new("UICorner")
+    CopyHwidCorner.CornerRadius = UDim.new(0, 4)
+    CopyHwidCorner.Parent = CopyHwidBtn
+
+    -- Step Indicator & Progress Bar (2 Bước, Hạn Key 24h)
+    local StepLabel = Instance.new("TextLabel")
+    StepLabel.Name = "StepLabel"
+    StepLabel.Size = UDim2.new(1, -36, 0, 20)
+    StepLabel.Position = UDim2.new(0, 18, 0, 102)
+    StepLabel.BackgroundTransparency = 1
+    StepLabel.Text = "TIẾN TRÌNH VƯỢT LINK4M: BƯỚC 0 / 2 (HẠN KEY 24H)"
+    StepLabel.TextColor3 = Color3.fromRGB(220, 225, 235)
+    StepLabel.Font = Enum.Font.GothamMedium
+    StepLabel.TextSize = 12
+    StepLabel.TextXAlignment = Enum.TextXAlignment.Left
+    StepLabel.Parent = MainFrame
+
+    local StepBarBg = Instance.new("Frame")
+    StepBarBg.Size = UDim2.new(1, -36, 0, 8)
+    StepBarBg.Position = UDim2.new(0, 18, 0, 126)
+    StepBarBg.BackgroundColor3 = Color3.fromRGB(10, 11, 15)
+    StepBarBg.BorderSizePixel = 0
+    StepBarBg.Parent = MainFrame
+    local StepBarBgCorner = Instance.new("UICorner")
+    StepBarBgCorner.CornerRadius = UDim.new(0, 4)
+    StepBarBgCorner.Parent = StepBarBg
+
+    local StepBarFill = Instance.new("Frame")
+    StepBarFill.Size = UDim2.new(0, 0, 1, 0)
+    StepBarFill.BackgroundColor3 = Color3.fromRGB(255, 51, 68)
+    StepBarFill.BorderSizePixel = 0
+    StepBarFill.Parent = StepBarBg
+    local StepBarFillCorner = Instance.new("UICorner")
+    StepBarFillCorner.CornerRadius = UDim.new(0, 4)
+    StepBarFillCorner.Parent = StepBarFill
+
+    -- Key Input Box
+    local InputFrame = Instance.new("Frame")
+    InputFrame.Name = "InputFrame"
+    InputFrame.Size = UDim2.new(1, -36, 0, 44)
+    InputFrame.Position = UDim2.new(0, 18, 0, 146)
+    InputFrame.BackgroundColor3 = Color3.fromRGB(10, 11, 15)
+    InputFrame.BorderSizePixel = 0
+    InputFrame.Parent = MainFrame
+
+    local InputCorner = Instance.new("UICorner")
+    InputCorner.CornerRadius = UDim.new(0, 8)
+    InputCorner.Parent = InputFrame
+
+    local InputStroke = Instance.new("UIStroke")
+    InputStroke.Color = Color3.fromRGB(38, 42, 56)
+    InputStroke.Thickness = 1
+    InputStroke.Parent = InputFrame
+
+    local KeyInput = Instance.new("TextBox")
+    KeyInput.Name = "KeyInput"
+    KeyInput.Size = UDim2.new(1, -16, 1, 0)
+    KeyInput.Position = UDim2.new(0, 8, 0, 0)
+    KeyInput.BackgroundTransparency = 1
+    KeyInput.PlaceholderText = "Dán Key của bạn vào đây (Ví dụ: ZYROX-XXXX-XXXX)..."
+    KeyInput.PlaceholderColor3 = Color3.fromRGB(100, 110, 130)
+    KeyInput.Text = savedKey
+    KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KeyInput.Font = Enum.Font.GothamMedium
+    KeyInput.TextSize = 13
+    KeyInput.ClearTextOnFocus = false
+    KeyInput.Parent = InputFrame
+
+    KeyInput.Focused:Connect(function()
+        InputStroke.Color = Color3.fromRGB(255, 51, 68)
+    end)
+    KeyInput.FocusLost:Connect(function()
+        InputStroke.Color = Color3.fromRGB(38, 42, 56)
+    end)
+
+    -- Status Label
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Name = "StatusLabel"
+    StatusLabel.Size = UDim2.new(1, -36, 0, 20)
+    StatusLabel.Position = UDim2.new(0, 18, 0, 196)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = (savedKey ~= "" and "Key lưu trữ đã hết hạn. Vui lòng lấy key mới!") or "Sẵn sàng đăng nhập."
+    StatusLabel.TextColor3 = (savedKey ~= "" and Color3.fromRGB(255, 180, 80)) or Color3.fromRGB(150, 160, 180)
+    StatusLabel.Font = Enum.Font.GothamMedium
+    StatusLabel.TextSize = 12
+    StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
+    StatusLabel.Parent = MainFrame
+
+    -- Main Action Buttons
+    local LoginBtn = Instance.new("TextButton")
+    LoginBtn.Name = "LoginBtn"
+    LoginBtn.Size = UDim2.new(1, -36, 0, 44)
+    LoginBtn.Position = UDim2.new(0, 18, 0, 224)
+    LoginBtn.BackgroundColor3 = Color3.fromRGB(255, 51, 68)
+    LoginBtn.Text = "ĐĂNG NHẬP (LOGIN)"
+    LoginBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LoginBtn.Font = Enum.Font.GothamBold
+    LoginBtn.TextSize = 14
+    LoginBtn.Parent = MainFrame
+    local LoginCorner = Instance.new("UICorner")
+    LoginCorner.CornerRadius = UDim.new(0, 8)
+    LoginCorner.Parent = LoginBtn
+
+    local GetKeyBtn = Instance.new("TextButton")
+    GetKeyBtn.Name = "GetKeyBtn"
+    GetKeyBtn.Size = UDim2.new(1, -36, 0, 42)
+    GetKeyBtn.Position = UDim2.new(0, 18, 0, 276)
+    GetKeyBtn.BackgroundColor3 = Color3.fromRGB(249, 115, 22)
+    GetKeyBtn.Text = "LẤY LINK BƯỚC 1/2"
+    GetKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    GetKeyBtn.Font = Enum.Font.GothamBold
+    GetKeyBtn.TextSize = 13
+    GetKeyBtn.Parent = MainFrame
+    local GetKeyCorner = Instance.new("UICorner")
+    GetKeyCorner.CornerRadius = UDim.new(0, 8)
+    GetKeyCorner.Parent = GetKeyBtn
+
+    local PasteBtn = Instance.new("TextButton")
+    PasteBtn.Name = "PasteBtn"
+    PasteBtn.Size = UDim2.new(0.48, -14, 0, 36)
+    PasteBtn.Position = UDim2.new(0, 18, 0, 326)
+    PasteBtn.BackgroundColor3 = Color3.fromRGB(26, 30, 42)
+    PasteBtn.Text = "📋 DÁN KEY"
+    PasteBtn.TextColor3 = Color3.fromRGB(230, 235, 245)
+    PasteBtn.Font = Enum.Font.GothamBold
+    PasteBtn.TextSize = 12
+    PasteBtn.Parent = MainFrame
+    local PasteCorner = Instance.new("UICorner")
+    PasteCorner.CornerRadius = UDim.new(0, 6)
+    PasteCorner.Parent = PasteBtn
+
+    local OpenWebBtn = Instance.new("TextButton")
+    OpenWebBtn.Name = "OpenWebBtn"
+    OpenWebBtn.Size = UDim2.new(0.48, -14, 0, 36)
+    OpenWebBtn.Position = UDim2.new(0.52, 5, 0, 326)
+    OpenWebBtn.BackgroundColor3 = Color3.fromRGB(16, 44, 70)
+    OpenWebBtn.Text = "🌐 MỞ WEB TẠO KEY"
+    OpenWebBtn.TextColor3 = Color3.fromRGB(60, 200, 255)
+    OpenWebBtn.Font = Enum.Font.GothamBold
+    OpenWebBtn.TextSize = 12
+    OpenWebBtn.Parent = MainFrame
+    local OpenWebCorner = Instance.new("UICorner")
+    OpenWebCorner.CornerRadius = UDim.new(0, 6)
+    OpenWebCorner.Parent = OpenWebBtn
+
+    local FooterText = Instance.new("TextLabel")
+    FooterText.Size = UDim2.new(1, -36, 0, 24)
+    FooterText.Position = UDim2.new(0, 18, 0, 380)
+    FooterText.BackgroundTransparency = 1
+    FooterText.Text = "ZenithAuth • Vượt đủ 2 bước link4m để nhận mã kích hoạt Key 24h (1 ngày)"
+    FooterText.TextColor3 = Color3.fromRGB(100, 110, 130)
+    FooterText.Font = Enum.Font.Gotham
+    FooterText.TextSize = 11
+    FooterText.Parent = MainFrame
+
+    -- Button Actions
+    CopyHwidBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            if setclipboard then
+                setclipboard(HWID)
+                CopyHwidBtn.Text = "ĐÃ COPY!"
+                task.delay(1.5, function() CopyHwidBtn.Text = "COPY HWID" end)
+            end
+        end)
+    end)
+
+    PasteBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            if getclipboard then
+                local cb = getclipboard()
+                if cb and cb ~= "" then
+                    KeyInput.Text = cb:gsub("%s+", "")
+                    StatusLabel.Text = "Đã dán Key từ Clipboard!"
+                    StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 140)
+                end
+            end
+        end)
+    end)
+
+    -- 2 Bước Vượt Link (Chỉ tính khi người chơi xác nhận đã vượt xong)
+    local stepState = "GET_STEP_1" -- GET_STEP_1 -> CONFIRM_STEP_1 -> GET_STEP_2 -> OPEN_GETKEY
+
+    local function handleKeyStep()
+        if stepState == "GET_STEP_1" then
+            StatusLabel.Text = "Đang tạo link Bước 1/2 qua Link4m..."
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+            task.spawn(function()
+                local dest = string.format("http://zenithauth.cu.ma/step.php?step=2&hwid=%s&owner=admin&api=script", a:UrlEncode(HWID))
+                local shortened = shortenLink4m(dest)
+                pcall(function()
+                    if setclipboard then setclipboard(shortened) end
+                end)
+                pcall(function()
+                    if typeof(openurl) == "function" then openurl(shortened) end
+                end)
+
+                StatusLabel.Text = "Đã mở link Bước 1! Vượt link xong, bấm nút bên dưới để tiếp tục."
+                StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 140)
+
+                stepState = "CONFIRM_STEP_1"
+                GetKeyBtn.Text = "XÁC NHẬN ĐÃ VƯỢT XONG BƯỚC 1 ➔"
+                GetKeyBtn.BackgroundColor3 = Color3.fromRGB(245, 158, 11)
+            end)
+
+        elseif stepState == "CONFIRM_STEP_1" then
+            -- Người chơi đã vượt xong bước 1, mới tính là 1/2!
+            stepState = "GET_STEP_2"
+            StepLabel.Text = "TIẾN TRÌNH VƯỢT LINK4M: BƯỚC 1 / 2 (ĐÃ QUA BƯỚC 1)"
+            StepBarFill.Size = UDim2.new(0.5, 0, 1, 0)
+            GetKeyBtn.Text = "LẤY LINK BƯỚC 2/2 (LẤY MÃ KEY)"
+            GetKeyBtn.BackgroundColor3 = Color3.fromRGB(16, 185, 129)
+            StatusLabel.Text = "Tuyệt vời! Hãy bấm nút để lấy link Bước 2/2."
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
+
+        elseif stepState == "GET_STEP_2" then
+            StatusLabel.Text = "Đang tạo link Bước 2/2 qua Link4m..."
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+            task.spawn(function()
+                local dest = string.format("http://zenithauth.cu.ma/checkpoint.php?hwid=%s&owner=admin&api=script", a:UrlEncode(HWID))
+                local shortened = shortenLink4m(dest)
+                pcall(function()
+                    if setclipboard then setclipboard(shortened) end
+                end)
+                pcall(function()
+                    if typeof(openurl) == "function" then openurl(shortened) end
+                end)
+
+                StatusLabel.Text = "Đã mở Bước 2/2! Vượt link xong bạn sẽ nhận mã ZY-XXXXXX để tạo Key."
+                StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 140)
+
+                stepState = "OPEN_GETKEY"
+                StepLabel.Text = "HOÀN TẤT 2/2! MỞ TRANG NHẬN KEY (GETKEY.PHP)"
+                StepBarFill.Size = UDim2.new(1, 0, 1, 0)
+                GetKeyBtn.Text = "MỞ WEB NHẬN KEY (GETKEY.PHP)"
+                GetKeyBtn.BackgroundColor3 = Color3.fromRGB(6, 182, 212)
+            end)
+
+        else -- OPEN_GETKEY
+            local getKeyUrl = string.format("http://zenithauth.cu.ma/getkey.php?hwid=%s&owner=admin&api=script", a:UrlEncode(HWID))
+            pcall(function()
+                if setclipboard then setclipboard(getKeyUrl) end
+            end)
+            pcall(function()
+                if typeof(openurl) == "function" then openurl(getKeyUrl) end
+            end)
+            StatusLabel.Text = "Đã mở trang getkey.php! Dán mã ZY-XXXXXX để lấy Key 24h."
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
+        end
+    end
+
+    GetKeyBtn.MouseButton1Click:Connect(handleKeyStep)
+
+    OpenWebBtn.MouseButton1Click:Connect(function()
+        local getKeyUrl = string.format("http://zenithauth.cu.ma/getkey.php?hwid=%s&owner=admin&api=script", a:UrlEncode(HWID))
+        pcall(function()
+            if setclipboard then setclipboard(getKeyUrl) end
+        end)
+        pcall(function()
+            if typeof(openurl) == "function" then openurl(getKeyUrl) end
+        end)
+        StatusLabel.Text = "Đã copy link getkey.php vào clipboard và mở trình duyệt!"
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
+    end)
+
+    LoginBtn.MouseButton1Click:Connect(function()
+        local inputKey = KeyInput.Text:gsub("%s+", "")
+        if inputKey == "" then
+            StatusLabel.Text = "Vui lòng nhập Key trước khi bấm đăng nhập!"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return
+        end
+
+        LoginBtn.Text = "ĐANG XÁC THỰC..."
+        StatusLabel.Text = "Đang gửi yêu cầu xác thực tới máy chủ..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+
+        task.spawn(function()
+            local okValid, okMsg, expiry = verifyKey(inputKey)
+            if okValid then
+                StatusLabel.Text = "✓ " .. tostring(okMsg) .. " Đang tải Zenith Hub..."
+                StatusLabel.TextColor3 = Color3.fromRGB(45, 230, 110)
+                LoginBtn.Text = "ĐĂNG NHẬP THÀNH CÔNG!"
+                LoginBtn.BackgroundColor3 = Color3.fromRGB(45, 230, 110)
+                saveKey(inputKey)
+
+                task.wait(0.8)
+                _G.ZenithAuthenticated = true
+
+                pcall(function()
+                    local tween = u:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Position = UDim2.new(0.5, -240, 0.5, -240),
+                        BackgroundTransparency = 1
+                    })
+                    tween:Play()
+                    tween.Completed:Wait()
+                    ScreenGui:Destroy()
+                end)
+            else
+                LoginBtn.Text = "ĐĂNG NHẬP (LOGIN)"
+                StatusLabel.Text = "✕ " .. tostring(okMsg)
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            end
+        end)
+    end)
+
+    -- Block hub until authenticated
+    repeat task.wait(0.2) until _G.ZenithAuthenticated == true
+end
+-- ==============================================================================
+-- [END ZENITH AUTHENTICATION]
+-- ==============================================================================
 local V=game:GetService( "ProximityPromptService" )pcall(function(...) V.PromptButtonHoldBegan :Connect(function(e,...) pcall(function(...)
             if typeof(fireproximityprompt)== "function" then
                 fireproximityprompt(e)
@@ -779,26 +1471,12 @@ S4=function(e,...) e=e or o.Character
     if not e then
         return
     end
-    local r=e:FindFirstChild( "HumanoidRootPart" )
-    local y=e:FindFirstChild( "Torso" )or e:FindFirstChild( "UpperTorso" )or r
-    if not y then
-        return
-    end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
-            pcall(function(...) r:Destroy()
-            end
-            )
-        end
-    end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "Motor6D" )and(r.Part0 and r.Part1 )then
+    -- Keep Motor6Ds enabled, clean up any rigid joint welds to preserve jump and tool physics
+    for _, r in ipairs(e:GetDescendants()) do
+        if r:IsA("Motor6D") then
             r.Enabled = true
-            local e= "RigidJointWeld_" ..r.Name
-            local y=r.Part1 :FindFirstChild(e)
-            if not y then
-                local y=Instance.new ( "WeldConstraint" )y.Name =e y.Part0 =r.Part0 y.Part1 =r.Part1 y.Parent =r.Part1
-            end
+        elseif r:IsA("WeldConstraint") and string.find(r.Name, "RigidJointWeld_") then
+            pcall(function() r:Destroy() end)
         end
     end
 end
@@ -812,17 +1490,26 @@ Z4=function(e,...)
     end
     local r=e:FindFirstChildOfClass( "Humanoid" )
     if r then
-        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Running, true)
         if r.PlatformStand then
             r.PlatformStand = false
         end
         if r.Sit then
             r.Sit = false
         end
+        if r.JumpPower < 50 then r.JumpPower = 50 end
+        if r.JumpHeight < 7.2 then r.JumpHeight = 7.2 end
     end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "LocalScript" )and((string.find (string.lower (r.Name ), "ragdoll" )or string.find (string.lower (r.Name ), "fall" )))then
-            r.Disabled = true
+    for _, desc in ipairs(e:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            desc.CanTouch = true
         end
     end
     S4(e)
@@ -1171,15 +1858,17 @@ b4=function(e,...) h.godmode =e
     end
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
-        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead, not e)
         if e and y.Health < 100 then
             y.Health = 100
         end
     end
-    for r,y in ipairs(r:GetDescendants())do
-        if y:IsA( "BasePart" )then
-            if e then
-                y.CanTouch = false y.CanCollide = false
+    -- Keep CanTouch = true so player can enter events, touch portals, and collect items!
+    for _, part in ipairs(r:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanTouch = true
+            if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
+                part.CanCollide = true
             end
         end
     end
@@ -1193,31 +1882,28 @@ local function disableDesyncGodmode()
 end
 
 A4=function(...)
-    local e=o.Character
-    local y=e and e:FindFirstChildOfClass( "Humanoid" )
-    if not e or not y then
+    local char = o.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hum then
         return false
     end
-    pcall(function(...) y.BreakJointsOnDeath = false
-        local w=y:Clone()w.Parent =e y:Destroy()
-        local j=w:FindFirstChildOfClass( "Animator" )
-        if not j then
-            j=Instance.new ( "Animator" )j.Parent =w
+    -- Keep original Humanoid intact so Spacebar Jump, Tool activation, and animations never break
+    pcall(function(...)
+        hum.BreakJointsOnDeath = false
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        hum:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        if hum.JumpPower < 50 then hum.JumpPower = 50 end
+        if hum.JumpHeight < 7.2 then hum.JumpHeight = 7.2 end
+        hum:ChangeState(Enum.HumanoidStateType.Running)
+    end)
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanTouch = true
         end
-        r.CurrentCamera.CameraSubject =w
-        local k=e:FindFirstChild( "Animate" )
-        if k and k:IsA( "LocalScript" )then
-            k.Disabled = true task.defer (function(...) task.wait ( 0.05 )k.Disabled = false
-            end
-            )
-        end
-        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w:ChangeState(Enum.HumanoidStateType.Running )
     end
-    )h.swapped = true
-    if h.godmode then
-        b4( true )
-    end
-    z4(e)
+    z4(char)
     return true
 end
 t4=function(...)
@@ -1589,7 +2275,8 @@ g4=function(e,r,u,...)
     local a=s4()e=math.max ( 100 ,e or h.glideSpeed or 600 )
     local V=h.laneZ or L h.isReturning = true h.stateTime =os.clock ()V4(a, 20 )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
     local H=o4()
-    local t=math.max (e,H)
+    local isCarryingEgg = (w4 and w4()) or (j4 and j4())
+    local t = isCarryingEgg and math.min(e, H) or e
     local s=os.clock ()+ 25
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
@@ -1870,7 +2557,8 @@ Q4=function(e,r,...)
     local k=h.laneZ or L
     local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )pcall(u4)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
-    local H=math.max (e,V)
+    local isCarryingEgg = (w4 and w4()) or (j4 and j4())
+    local H = isCarryingEgg and math.min(e, V) or e
     local s=os.clock ()+ 15
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
@@ -3400,7 +4088,7 @@ l4=function(e,u,...)
     h.statusText = "[3/7] Pre-streaming Target..." pcall(function(...) o:RequestStreamAroundAsync(H)
     end
     )V4(H, 12 )h.statusText = "[4/7] Waiting for physical bounce..." j.Anchored = false k:ChangeState(Enum.HumanoidStateType.Running )
-    local p=(k.WalkSpeed > 0 )and k.WalkSpeed or 16 k.WalkSpeed = 0 k:Move(Vector3.zero , false )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero task.wait ( 0.04 )
+    local p=(k.WalkSpeed > 0 )and k.WalkSpeed or 16 k.WalkSpeed = 0 k.JumpHeight = math.max(7.2, k.JumpHeight) k.JumpPower = math.max(50, k.JumpPower) k:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) k:Move(Vector3.zero , false )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero task.wait ( 0.04 )
     local B=j.Position
     local J=B.Y
     local K=select( 2 ,e4())or s
@@ -3418,7 +4106,7 @@ l4=function(e,u,...)
     local R=os.clock ()
     local g= false
     local Q=os.clock ()+ 2.5
-    local P= false
+    local hasFiredStrike = false
     while os.clock ()<Q and(h.alive and h.teleporting )do
         if u and O4~=u then
             t( "[Snipe] Cancelled by session switch during strike bounce" )
@@ -3440,8 +4128,8 @@ l4=function(e,u,...)
                 break
             end
         end
-        if e>= 0.5 and not P then
-            P= true H4(K)
+        if e>= 0.5 and not hasFiredStrike then
+            hasFiredStrike = true H4(K)
         end
         y.Heartbeat :Wait()
     end
@@ -4309,7 +4997,7 @@ local function disableSingleTrap(obj)
     pcall(function()
         local nm = obj.Name:lower()
         -- NEVER touch eggs, pets, tools, dropped loot, cards or stands!
-        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("pen") or nm:find("plot") then
+        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("pen") or nm:find("plot") or nm:find("event") or nm:find("portal") or nm:find("teleport") or nm:find("boss") or nm:find("arena") then
             return
         end
         if obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj:GetAttribute("Category") or obj:GetAttribute("Pet") then
@@ -5052,8 +5740,8 @@ local Window = WindUI:CreateWindow({
 	Theme = "DuyMinhVortexRed",
 	User = { Enabled = true, Anonymous = false },
 	OpenButton = {
-		Title = "DuyMinh",
-		Icon = "",
+		Title = "v2.5",
+		Icon = "zap",
 		CornerRadius = UDim.new(0, 16),
 		StrokeThickness = 2,
 		Color = ColorSequence.new(
@@ -5067,13 +5755,13 @@ local Window = WindUI:CreateWindow({
 })
 
 pcall(function()
-	Window:Tag({ Title = "DuyMinh", Icon = "egg", Color = Color3.fromRGB(255, 50, 80) })
+	Window:Tag({ Title = "v2.5", Icon = "zap", Color = Color3.fromRGB(255, 50, 80) })
 end)
 
 pcall(function()
 	Window:EditOpenButton({
-		Title = "DuyMinh",
-		Icon = "",
+		Title = "v2.5",
+		Icon = "zap",
 		CornerRadius = UDim.new(0, 16),
 		StrokeThickness = 2,
 		Color = ColorSequence.new(
@@ -5107,7 +5795,7 @@ local StealTab = mainSec:Tab({ Title = "Auto Steal", Icon = "zap" })
 local PlaceTab = mainSec:Tab({ Title = "Place & Hatch", Icon = "package" })
 local SelectTab = mainSec:Tab({ Title = "Egg Select", Icon = "list" })
 local CharTab = toolsSec:Tab({ Title = "Character", Icon = "user" })
-local EspTab = toolsSec:Tab({ Title = "ESP Trứng", Icon = "eye" })
+local EspTab = mainSec:Tab({ Title = "ESP Trứng", Icon = "eye" })
 local SettingsTab = toolsSec:Tab({ Title = "Settings", Icon = "settings" })
 
 -- AUTO STEAL (mismas funciones T4 / N4 / l4 / Q4)
@@ -5390,6 +6078,31 @@ SettingsTab:Button({
 		pcall(function() Window:Destroy() end)
 	end,
 })
+
+
+-- ==========================================
+-- ANTI-SLOW WALK GUARD (fixes slow when holding egg/pet)
+-- ==========================================
+task.spawn(function()
+    while h.alive do
+        pcall(function()
+            local char = o.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.WalkSpeed < 14 and not h.holdingEggForGuard then
+                    hum.WalkSpeed = 16
+                end
+                if hum then
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                    if hum.JumpHeight < 7 then
+                        hum.JumpHeight = 7.2
+                    end
+                end
+            end
+        end)
+        task.wait(0.5)
+    end
+end)
 
 print("[Vortex X Sage] Steal An Egg WindUI loaded")
 
