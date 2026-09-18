@@ -697,6 +697,28 @@ end
 -- ==============================================================================
 -- [END ZENITH AUTHENTICATION]
 -- ==============================================================================
+-- ==============================================================================
+-- [ZENITH UNIVERSAL JUMP CONTROLLER] (Fix Spacebar / Touch Jump across Humanoid desync)
+-- ==============================================================================
+if not _G._ZenithJumpHooked then
+    _G._ZenithJumpHooked = true
+    local function doPlayerJump()
+        local char = o.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            hum.Jump = true
+            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+        end
+    end
+    w.JumpRequest:Connect(doPlayerJump)
+    w.InputBegan:Connect(function(input, processed)
+        if input.KeyCode == Enum.KeyCode.Space and not processed then
+            doPlayerJump()
+        end
+    end)
+end
+
 local V=game:GetService( "ProximityPromptService" )pcall(function(...) V.PromptButtonHoldBegan :Connect(function(e,...) pcall(function(...)
             if typeof(fireproximityprompt)== "function" then
                 fireproximityprompt(e)
@@ -1031,6 +1053,45 @@ local W4=nil pcall(function(...)
     (e:GetPropertyChangedSignal( "ClockTime" )):Connect(function(...) X4={}G4= 0
     end
     )
+    -- Instant Chat Spawn Detection (React in 0.01s to spawn announcements)
+    local function onSpawnMsg(txt)
+        if not txt then return end
+        local l = string.lower(tostring(txt))
+        if string.find(l, "spawned in") or string.find(l, "spawned") then
+            X4 = {}
+            G4 = 0
+            if h and h.onTreadmill and M4 then
+                h.onTreadmill = false
+                task.spawn(M4, true)
+            end
+            if ek then task.spawn(ek) end
+        end
+    end
+    pcall(function()
+        local tcs = game:GetService("TextChatService")
+        if tcs and tcs.OnIncomingMessage then
+            local oldMsg = tcs.OnIncomingMessage
+            tcs.OnIncomingMessage = function(m)
+                pcall(function() onSpawnMsg(m.Text) end)
+                if oldMsg then return oldMsg(m) end
+            end
+        end
+    end)
+    pcall(function()
+        local chatEv = j:FindFirstChild("DefaultChatSystemChatEvents")
+        if chatEv then
+            local onMsg = chatEv:FindFirstChild("OnMessageDoneFiltering")
+            if onMsg and onMsg:IsA("RemoteEvent") then
+                onMsg.OnClientEvent:Connect(function(d)
+                    pcall(function()
+                        if type(d) == "table" and d.Message then
+                            onSpawnMsg(d.Message)
+                        end
+                    end)
+                end)
+            end
+        end
+    end)
 end
 )pcall(function(...)
     local function e(e,...)
@@ -1108,35 +1169,27 @@ y4=function(...)
     return e
 end
 u4=function(e,...)
-    if not e and not((h.pureTweenFarm or h.autoFarmLoop or h.teleporting ))then
+    if h and h.isReturning then
         return
     end
     local r=o.Character
-    local y=r and r:FindFirstChildOfClass( "Humanoid" )
-    local u=o:FindFirstChild( "Backpack" )
-    if y then
-        pcall(function(...) y:UnequipTools()
-        end
-        )
+    local hrp=r and r:FindFirstChild( "HumanoidRootPart" )
+    if hrp and hrp.Position.X > 530 then
+        return
     end
-    if r and u then
-        for e,r in ipairs(r:GetChildren())do
-            if r:IsA( "Tool" )then
-                pcall(function(...) r.Parent =u
-                end
-                )
+    if not e and not((h.pureTweenFarm or h.autoFarmLoop or h.teleporting ))then
+        return
+    end
+    local u=o:FindFirstChild( "Backpack" )
+    if r and u and not (h and h.isReturning) then
+        for _,tool in ipairs(r:GetChildren())do
+            if tool:IsA( "Tool" ) and m(tool) then
+                pcall(function(...) tool.Parent =u end)
             end
         end
     end
 end
 w4=function(e,...)
-    if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
-        local e=e4()
-        if e then
-            pcall(u4)
-        end
-        return false
-    end
     local r,y=e4()
     if r then
         if e then
@@ -1242,12 +1295,12 @@ local function ek(...)
 end
 task.spawn (function(...)
     while true do
-        task.wait ( 1.5 )pcall(ek)
+        task.wait ( 0.5 )pcall(ek)
     end
 end
 )function h4(e,...)
     local y=os.clock ()
-    if e or(y-G4>= 1.5 )or not F4 then
+    if e or(y-G4>= 0.6 )or not F4 then
         ek()
     end
     local u=((F4 and#F4> 0 ))and F4 or nil
@@ -1368,7 +1421,7 @@ k4=function(e,...)
             end
         end
     end
-    return true , "Unchecked"
+    return false , "DespawnedOrTaken"
 end
 a4=function(...)
     local e,r=e4()
@@ -1469,21 +1522,14 @@ S4=function(e,...) e=e or o.Character
     if not y then
         return
     end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
-            pcall(function(...) r:Destroy()
-            end
-            )
+    for _,part in ipairs(e:GetDescendants())do
+        if part:IsA( "BallSocketConstraint" )or part:IsA( "HingeConstraint" )then
+            pcall(function(...) part:Destroy() end)
         end
     end
-    for e,r in ipairs(e:GetDescendants())do
-        if r:IsA( "Motor6D" )and(r.Part0 and r.Part1 )then
-            r.Enabled = true
-            local e= "RigidJointWeld_" ..r.Name
-            local y=r.Part1 :FindFirstChild(e)
-            if not y then
-                local y=Instance.new ( "WeldConstraint" )y.Name =e y.Part0 =r.Part0 y.Part1 =r.Part1 y.Parent =r.Part1
-            end
+    for _,motor in ipairs(e:GetDescendants())do
+        if motor:IsA( "Motor6D" )and(motor.Part0 and motor.Part1 )then
+            motor.Enabled = true
         end
     end
 end
@@ -1538,8 +1584,8 @@ z4=function(e,...)
             y.Disabled = true
         end
     end
-    )e.ChildAdded :Connect(function(e,...)
-        if e:IsA( "Tool" )and(((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard )then
+    )e.ChildAdded :Connect(function(ch,...)
+        if ch:IsA( "Tool" ) and m(ch) and (((h.pureTweenFarm or h.autoFarmLoop )) and not h.holdingEggForGuard and not h.isReturning )then
             task.defer (function(...) u4()
             end
             )
@@ -1673,37 +1719,35 @@ L4=function(...)
     end
     return false
 end
-M4=function(...)
-    if yk then
-        return
-    end
-    if os.clock ()-rk< 0.8 then
-        if h then
-            h.onTreadmill = false
-        end
-        return
-    end
-    yk= true rk=os.clock ()
+M4=function(force,...)
     if h then
         h.onTreadmill = false
     end
+    if not force and yk then
+        return
+    end
+    if not force and os.clock ()-rk< 0.3 then
+        return
+    end
+    yk= true rk=os.clock ()
     E4()
     if U then
-        pcall(function(...) U:InvokeServer()
+        task.spawn (function(...) pcall(function(...) U:InvokeServer()
         end
         )
+        end)
     end
     local e=o.Character
     local r=e and e:FindFirstChildOfClass( "Humanoid" )
     local y=e and e:FindFirstChild( "HumanoidRootPart" )
     if r then
         pcall(function(...)
-            for r,y in ipairs(r:GetPlayingAnimationTracks())do
-                local u=y.Animation
+            for _,trk in ipairs(r:GetPlayingAnimationTracks())do
+                local u=trk.Animation
                 local w=u and u.AnimationId or ""
-                local j=string.lower (y.Name or "" )
+                local j=string.lower (trk.Name or "" )
                 if string.find (w, "10921259953" )or string.find (j, "treadmill" )or string.find (j, "run" )then
-                    y:Stop( 0 )
+                    trk:Stop( 0 )
                 end
             end
             r.PlatformStand = false r.Sit = false r:SetStateEnabled(Enum.HumanoidStateType.Running , true )r:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )r:ChangeState(Enum.HumanoidStateType.Running )
@@ -1722,7 +1766,7 @@ M4=function(...)
     if y then
         y.AssemblyLinearVelocity =Vector3.zero y.AssemblyAngularVelocity =Vector3.zero
     end
-    Z4(e)task.wait ( 0.15 )yk= false
+    Z4(e)yk= false
 end
 q4=M4 n4=function(...) pcall(function(...)
         local e=r:FindFirstChild( "Plots" )
@@ -1861,10 +1905,17 @@ b4=function(e,...) h.godmode =e
             y.Health = 100
         end
     end
-    for r,y in ipairs(r:GetDescendants())do
-        if y:IsA( "BasePart" )then
-            if e then
-                y.CanTouch = false y.CanCollide = false
+    for _,part in ipairs(r:GetDescendants())do
+        if part:IsA( "BasePart" )then
+            part.CanTouch = true
+            if e and (h.glidingToTarget or h.isReturning or h.teleporting) then
+                if part.Name ~= "HumanoidRootPart" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" and part.Name ~= "LowerTorso" then
+                    part.CanCollide = false
+                end
+            else
+                if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
+                    part.CanCollide = true
+                end
             end
         end
     end
@@ -1896,7 +1947,7 @@ A4=function(...)
             end
             )
         end
-        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w:ChangeState(Enum.HumanoidStateType.Running )
+        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )w:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )w:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w.AutoRotate = true w.PlatformStand = false w.Sit = false w:ChangeState(Enum.HumanoidStateType.Running )
     end
     )h.swapped = true
     if h.godmode then
@@ -2553,7 +2604,7 @@ Q4=function(e,r,...)
         j.AutoRotate = false
     end
     local k=h.laneZ or L
-    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )pcall(u4)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
     local H=math.max (e,V)
     local s=os.clock ()+ 15
@@ -2577,16 +2628,7 @@ Q4=function(e,r,...)
         local e=w.Position
         local o=((a-e)).Magnitude
         if e.X <=(E+ 10 )or o<= 6 then
-            u4()
             break
-        end
-        if u then
-            for e,r in ipairs(u:GetChildren())do
-                if r:IsA( "Tool" )then
-                    pcall(u4)
-                    break
-                end
-            end
         end
         local V=y.Heartbeat :Wait()e=w.Position
         local s=H
@@ -2800,6 +2842,10 @@ f4=function(e,...)
         local j=os.clock ()
         while h.alive and(((Vector2.new (u.Position.X ,u.Position.Z )-Vector2.new (a.X ,a.Z ))).Magnitude > 4 and(os.clock ()-j< 4 ))do
             if e and O4~=e then
+                return false
+            end
+            if N4 and N4() then
+                h.onTreadmill = false
                 return false
             end
             local j=y.Heartbeat :Wait()
@@ -3983,7 +4029,7 @@ U4=function(e,u,w,j,...)
         return false
     end
     if R then
-        pcall(u4)H( "[GuardStrike] Egg successfully secured after guard strike! Stashed in backpack." )h.statusText = "Egg Secured! Tweening along Z=-360..."
+        H( "[GuardStrike] Egg successfully secured after guard strike! Carrying to Safe Line..." )h.statusText = "Egg Secured! Carrying along Z=-360 to Safe Line..."
     else
         t( "[-] Failed to re-grab egg after guard strike (stolen or despawned)" )h.statusText = "[-] Failed to re-grab egg"
         if e then
@@ -4155,7 +4201,7 @@ l4=function(e,u,...)
     h.statusText = "[6/7] Picking up Target Egg..."
     local U=o:FindFirstChild( "Backpack" )
     for e,y in ipairs(w:GetChildren())do
-        if y:IsA( "Tool" )then
+        if y:IsA( "Tool" ) and not (m(y) and j and j.Position.X > 530) then
             pcall(function(...)
                 if U then
                     y.Parent =U
@@ -4242,7 +4288,7 @@ local Ck=os.clock ()task.spawn (function(...)
                         local w=N4()
                         if w and(h.pureTweenFarm and(Y4== "TWEEN" and O4==u))then
                             if h.onTreadmill or L4()then
-                                h.statusText = "[AutoSteal] Target found! Getting off treadmill..." M4()task.wait ( 0.08 )
+                                h.statusText = "[AutoSteal] Target found! Getting off treadmill..." M4(true)
                             end
                             local j,k=k4(w.Uid )
                             if not j and k~= "CarriedBySelf" then
@@ -4278,10 +4324,9 @@ local Ck=os.clock ()task.spawn (function(...)
                                     return
                                 end
                                 if r then
-                                    pcall(u4)
                                     if h.autoGlide then
                                         h.statusText = "[AutoSteal] Secured! Tweening to Safe Line X=525..." H( "[AutoSteal] Egg secured after Guard Strike! Returning smoothly to Safe Line X=525 along Z=-360..." )Q4(h.glideSpeed ,u)pcall(u4)
-                                        local r=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next steal..." ,r)H(string.format ( "[AutoSteal] Egg stashed in bag (%d total eggs). Hands-Free ready for next steal..." ,r))
+                                        local r=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next steal..." ,r)H(string.format ( "[AutoSteal] Egg stashed in bag (%d total eggs). Delivered! Next steal..." ,r))
                                     else
                                         h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
                                     end
@@ -4338,7 +4383,7 @@ local qk=os.clock ()task.spawn (function(...)
                         local y=N4()
                         if y and(h.autoFarmLoop and(Y4== "WARP" and O4==r))then
                             if h.onTreadmill or L4()then
-                                h.statusText = "[SnipeLoop] Target found! Getting off treadmill..." M4()task.wait ( 0.08 )
+                                h.statusText = "[SnipeLoop] Target found! Getting off treadmill..." M4(true)
                             end
                             local u=((y.Scale and y.Scale > 1.05 ))and string.format ( " | %.1fx" ,y.Scale )or "" H(string.format ( "[SnipeLoop] Starting Warp Snipe: %s | Zone: %s%s (Rank %d)" ,tostring(y.Category or "Egg" ),tostring(y.Area or "Field" ),u,tonumber(y.Rank )or 1 ))h.statusText =string.format ( "[SnipeLoop] Warping for %s%s..." ,tostring(y.Category or "Egg" ),u)
                             local w=l4(y,r)
@@ -4346,10 +4391,9 @@ local qk=os.clock ()task.spawn (function(...)
                                 return
                             end
                             if w then
-                                pcall(u4)
                                 if h.autoGlide then
                                     h.statusText = "[SnipeLoop] Target secured! Tweening to Safe Line X=525..." Q4(h.glideSpeed ,r)pcall(u4)
-                                    local y=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next snipe..." ,y)H(string.format ( "[SnipeLoop] Egg stashed in bag (%d total eggs). Hands-Free ready for next snipe..." ,y))
+                                    local y=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next snipe..." ,y)H(string.format ( "[SnipeLoop] Egg stashed in bag (%d total eggs). Delivered! Next snipe..." ,y))
                                 else
                                     h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)" H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
                                 end
@@ -5685,9 +5729,31 @@ local function refreshWorldEggEsp()
                             end
                         end
                     end
-                    if target then
-                        addEggCardEsp(target, card, dist, "")
+                    if not target then
+                        local tempPart = Instance.new("Part")
+                        tempPart.Name = "FieldEggPoint_" .. tostring(rec.Uid)
+                        tempPart.Size = Vector3.new(3, 3, 3)
+                        tempPart.CFrame = rec.BoundsCFrame
+                        tempPart.Anchored = true
+                        tempPart.CanCollide = false
+                        tempPart.CanTouch = false
+                        tempPart.Transparency = 1
+                        tempPart.Parent = r
+                        table.insert(espTempParts, tempPart)
+                        target = tempPart
                     end
+                    addEggCardEsp(target, card, dist, "")
+                    pcall(function()
+                        if target and target ~= tempPart then
+                            for _, p in ipairs(target:GetDescendants()) do
+                                if p:IsA("BasePart") and p.Name ~= "Hitbox" and p.Name ~= "Root" and not string.find(p.Name, "Pad") then
+                                    p.Transparency = 0
+                                elseif p:IsA("Decal") or p:IsA("Texture") then
+                                    p.Transparency = 0
+                                end
+                            end
+                        end
+                    end)
                 end
             end
         end
