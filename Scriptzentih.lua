@@ -106,7 +106,7 @@ end
 -- ==============================================================================
 -- [ZENITH AUTHENTICATION & LOGIN FORM SYSTEM]
 -- Server: zenithauth.cu.ma (Owner: admin, API: script)
--- Link4m Token: 6a11af03c365c0293240e181
+-- Link4m Token: 6a11af03c365c0293240e181 | 2-Step Flow | 24h Key
 -- ==============================================================================
 local function getHWID()
     local hwid = ""
@@ -265,14 +265,7 @@ if not _G.ZenithAuthenticated then
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.Parent = parentGui
 
-    local DimOverlay = Instance.new("Frame")
-    DimOverlay.Name = "DimOverlay"
-    DimOverlay.Size = UDim2.new(1, 0, 1, 0)
-    DimOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    DimOverlay.BackgroundTransparency = 0.5
-    DimOverlay.BorderSizePixel = 0
-    DimOverlay.Parent = ScreenGui
-
+    -- Main Container Window (No full-screen blocking overlay!)
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 480, 0, 420)
@@ -280,6 +273,7 @@ if not _G.ZenithAuthenticated then
     MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
     MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = true
+    MainFrame.Active = true
     MainFrame.Parent = ScreenGui
 
     local MainCorner = Instance.new("UICorner")
@@ -573,7 +567,7 @@ if not _G.ZenithAuthenticated then
     end)
 
     -- 2 Bước Vượt Link (Chỉ tính khi người chơi xác nhận đã vượt xong)
-    local stepState = "GET_STEP_1" -- GET_STEP_1 -> CONFIRM_STEP_1 -> GET_STEP_2 -> OPEN_GETKEY
+    local stepState = "GET_STEP_1"
 
     local function handleKeyStep()
         if stepState == "GET_STEP_1" then
@@ -598,7 +592,6 @@ if not _G.ZenithAuthenticated then
             end)
 
         elseif stepState == "CONFIRM_STEP_1" then
-            -- Người chơi đã vượt xong bước 1, mới tính là 1/2!
             stepState = "GET_STEP_2"
             StepLabel.Text = "TIẾN TRÌNH VƯỢT LINK4M: BƯỚC 1 / 2 (ĐÃ QUA BƯỚC 1)"
             StepBarFill.Size = UDim2.new(0.5, 0, 1, 0)
@@ -630,7 +623,7 @@ if not _G.ZenithAuthenticated then
                 GetKeyBtn.BackgroundColor3 = Color3.fromRGB(6, 182, 212)
             end)
 
-        else -- OPEN_GETKEY
+        else
             local getKeyUrl = string.format("http://zenithauth.cu.ma/getkey.php?hwid=%s&owner=admin&api=script", a:UrlEncode(HWID))
             pcall(function()
                 if setclipboard then setclipboard(getKeyUrl) end
@@ -1471,12 +1464,26 @@ S4=function(e,...) e=e or o.Character
     if not e then
         return
     end
-    -- Keep Motor6Ds enabled, clean up any rigid joint welds to preserve jump and tool physics
-    for _, r in ipairs(e:GetDescendants()) do
-        if r:IsA("Motor6D") then
+    local r=e:FindFirstChild( "HumanoidRootPart" )
+    local y=e:FindFirstChild( "Torso" )or e:FindFirstChild( "UpperTorso" )or r
+    if not y then
+        return
+    end
+    for e,r in ipairs(e:GetDescendants())do
+        if r:IsA( "BallSocketConstraint" )or r:IsA( "HingeConstraint" )or r:IsA( "NoCollisionConstraint" )then
+            pcall(function(...) r:Destroy()
+            end
+            )
+        end
+    end
+    for e,r in ipairs(e:GetDescendants())do
+        if r:IsA( "Motor6D" )and(r.Part0 and r.Part1 )then
             r.Enabled = true
-        elseif r:IsA("WeldConstraint") and string.find(r.Name, "RigidJointWeld_") then
-            pcall(function() r:Destroy() end)
+            local e= "RigidJointWeld_" ..r.Name
+            local y=r.Part1 :FindFirstChild(e)
+            if not y then
+                local y=Instance.new ( "WeldConstraint" )y.Name =e y.Part0 =r.Part0 y.Part1 =r.Part1 y.Parent =r.Part1
+            end
         end
     end
 end
@@ -1490,26 +1497,17 @@ Z4=function(e,...)
     end
     local r=e:FindFirstChildOfClass( "Humanoid" )
     if r then
-        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-        r:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        r:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-        r:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
         if r.PlatformStand then
             r.PlatformStand = false
         end
         if r.Sit then
             r.Sit = false
         end
-        if r.JumpPower < 50 then r.JumpPower = 50 end
-        if r.JumpHeight < 7.2 then r.JumpHeight = 7.2 end
     end
-    for _, desc in ipairs(e:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            desc.CanTouch = true
+    for e,r in ipairs(e:GetDescendants())do
+        if r:IsA( "LocalScript" )and((string.find (string.lower (r.Name ), "ragdoll" )or string.find (string.lower (r.Name ), "fall" )))then
+            r.Disabled = true
         end
     end
     S4(e)
@@ -1858,17 +1856,15 @@ b4=function(e,...) h.godmode =e
     end
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
-        y:SetStateEnabled(Enum.HumanoidStateType.Dead, not e)
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
         if e and y.Health < 100 then
             y.Health = 100
         end
     end
-    -- Keep CanTouch = true so player can enter events, touch portals, and collect items!
-    for _, part in ipairs(r:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanTouch = true
-            if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
-                part.CanCollide = true
+    for r,y in ipairs(r:GetDescendants())do
+        if y:IsA( "BasePart" )then
+            if e then
+                y.CanTouch = false y.CanCollide = false
             end
         end
     end
@@ -1882,28 +1878,31 @@ local function disableDesyncGodmode()
 end
 
 A4=function(...)
-    local char = o.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not char or not hum then
+    local e=o.Character
+    local y=e and e:FindFirstChildOfClass( "Humanoid" )
+    if not e or not y then
         return false
     end
-    -- Keep original Humanoid intact so Spacebar Jump, Tool activation, and animations never break
-    pcall(function(...)
-        hum.BreakJointsOnDeath = false
-        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
-        hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-        hum:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-        if hum.JumpPower < 50 then hum.JumpPower = 50 end
-        if hum.JumpHeight < 7.2 then hum.JumpHeight = 7.2 end
-        hum:ChangeState(Enum.HumanoidStateType.Running)
-    end)
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanTouch = true
+    pcall(function(...) y.BreakJointsOnDeath = false
+        local w=y:Clone()w.Parent =e y:Destroy()
+        local j=w:FindFirstChildOfClass( "Animator" )
+        if not j then
+            j=Instance.new ( "Animator" )j.Parent =w
         end
+        r.CurrentCamera.CameraSubject =w
+        local k=e:FindFirstChild( "Animate" )
+        if k and k:IsA( "LocalScript" )then
+            k.Disabled = true task.defer (function(...) task.wait ( 0.05 )k.Disabled = false
+            end
+            )
+        end
+        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w:ChangeState(Enum.HumanoidStateType.Running )
     end
-    z4(char)
+    )h.swapped = true
+    if h.godmode then
+        b4( true )
+    end
+    z4(e)
     return true
 end
 t4=function(...)
@@ -2275,8 +2274,7 @@ g4=function(e,r,u,...)
     local a=s4()e=math.max ( 100 ,e or h.glideSpeed or 600 )
     local V=h.laneZ or L h.isReturning = true h.stateTime =os.clock ()V4(a, 20 )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
     local H=o4()
-    local isCarryingEgg = (w4 and w4()) or (j4 and j4())
-    local t = isCarryingEgg and math.min(e, H) or e
+    local t=math.max (e,H)
     local s=os.clock ()+ 25
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
@@ -2557,8 +2555,7 @@ Q4=function(e,r,...)
     local k=h.laneZ or L
     local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )pcall(u4)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
-    local isCarryingEgg = (w4 and w4()) or (j4 and j4())
-    local H = isCarryingEgg and math.min(e, V) or e
+    local H=math.max (e,V)
     local s=os.clock ()+ 15
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
@@ -4106,7 +4103,7 @@ l4=function(e,u,...)
     local R=os.clock ()
     local g= false
     local Q=os.clock ()+ 2.5
-    local hasFiredStrike = false
+    local P= false
     while os.clock ()<Q and(h.alive and h.teleporting )do
         if u and O4~=u then
             t( "[Snipe] Cancelled by session switch during strike bounce" )
@@ -4128,8 +4125,8 @@ l4=function(e,u,...)
                 break
             end
         end
-        if e>= 0.5 and not hasFiredStrike then
-            hasFiredStrike = true H4(K)
+        if e>= 0.5 and not P then
+            P= true H4(K)
         end
         y.Heartbeat :Wait()
     end
@@ -4997,7 +4994,7 @@ local function disableSingleTrap(obj)
     pcall(function()
         local nm = obj.Name:lower()
         -- NEVER touch eggs, pets, tools, dropped loot, cards or stands!
-        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("pen") or nm:find("plot") or nm:find("event") or nm:find("portal") or nm:find("teleport") or nm:find("boss") or nm:find("arena") then
+        if nm:find("egg") or nm:find("pet") or nm:find("tool") or nm:find("card") or nm:find("slot") or nm:find("stand") or nm:find("pen") or nm:find("plot") then
             return
         end
         if obj:GetAttribute("EggUid") or obj:GetAttribute("UID") or obj:GetAttribute("Category") or obj:GetAttribute("Pet") then
