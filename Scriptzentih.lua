@@ -105,12 +105,7 @@ if typeof(hookfunction) == "function" and not _G._ZenithHookKickFunction then
         end
     end)
 end
-
-    repeat task.wait(0.2) until _G.ZenithAuthenticated == true
-end
--- ==============================================================================
--- [END ZENITH AUTHENTICATION]
--- ==============================================================================
+_G.ZenithAuthenticated = true
 -- ==============================================================================
 -- [ZENITH UNIVERSAL JUMP CONTROLLER] (Fix Spacebar / Touch Jump across Humanoid desync)
 -- ==============================================================================
