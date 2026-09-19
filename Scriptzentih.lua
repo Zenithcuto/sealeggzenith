@@ -12,85 +12,6 @@ local Window=nil
 local currentLang="EN"
 local executorCheckCaller=typeof(checkcaller)=="function" and checkcaller or function() return false end
 local safeNewCClosure=typeof(newcclosure)=="function" and newcclosure or function(fn) return fn end
-
--- Automatically destroy any leftover login GUIs from earlier executions
-pcall(function()
-    local function cleanGuis(container)
-        if not container then return end
-        for _, child in ipairs(container:GetChildren()) do
-            if child.Name == "ZenithAuth_LoginUI" or string.find(tostring(child.Name), "ZenithAuth") or string.find(tostring(child.Name), "LoginUI") then
-                pcall(function() child:Destroy() end)
-            end
-        end
-    end
-    pcall(function() if typeof(gethui) == "function" then cleanGuis(gethui()) end end)
-    pcall(function() cleanGuis(game:GetService("CoreGui")) end)
-    pcall(function() if o and o:FindFirstChild("PlayerGui") then cleanGuis(o.PlayerGui) end end)
-end)
-
--- ==============================================================================
--- [ZENITH ANTI-CHEAT BYPASS & ANTI-KICK SYSTEM] (Fix CODE BAC 1513)
--- ==============================================================================
-pcall(function()
-    if typeof(filtergc) == "function" and typeof(debug) == "table" and typeof(debug.getupvalues) == "function" then
-        local setMeta = (typeof(setrawmetatable) == "function" and setrawmetatable) or (typeof(setmetatable) == "function" and setmetatable)
-        if setMeta then
-            local ok, fn = pcall(function()
-                return filtergc("function", { Constants = { "gmatch", "GetFullName" } }, true)
-            end)
-            if ok and type(fn) == "function" then
-                local okUv, ups = pcall(debug.getupvalues, fn)
-                if okUv and type(ups) == "table" then
-                    for _, tbl in pairs(ups) do
-                        if typeof(tbl) == "table" then
-                            pcall(setMeta, tbl, { __newindex = function() end })
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
-pcall(function()
-    if typeof(hookfunction) == "function" and not _G._ZenithHookKickFunction then
-        _G._ZenithHookKickFunction = true
-        local lp = e.LocalPlayer or e:WaitForChild("LocalPlayer", 2)
-        if lp and typeof(lp.Kick) == "function" then
-            local oldKick
-            oldKick = hookfunction(lp.Kick, function(self, ...)
-                if not executorCheckCaller() and (self == o or self == lp) then
-                    warn("[Zenith BAC Bypass] Blocked direct LocalPlayer:Kick attempt: ", ...)
-                    return nil
-                end
-                return oldKick(self, ...)
-            end)
-        end
-    end
-end)
-_G.ZenithAuthenticated = true
--- ==============================================================================
--- [ZENITH UNIVERSAL JUMP CONTROLLER] (Fix Spacebar / Touch Jump across Humanoid desync)
--- ==============================================================================
-if not _G._ZenithJumpHooked then
-    _G._ZenithJumpHooked = true
-    local function doPlayerJump()
-        local char = o.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum and hum.Health > 0 then
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            hum.Jump = true
-            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
-        end
-    end
-    w.JumpRequest:Connect(doPlayerJump)
-    w.InputBegan:Connect(function(input, processed)
-        if input.KeyCode == Enum.KeyCode.Space and not processed then
-            doPlayerJump()
-        end
-    end)
-end
-
 local V=game:GetService( "ProximityPromptService" )pcall(function(...) V.PromptButtonHoldBegan :Connect(function(e,...) pcall(function(...)
             if typeof(fireproximityprompt)== "function" then
                 fireproximityprompt(e)
@@ -5105,7 +5026,7 @@ for _, url in ipairs(windui_urls) do
 end
 
 if not WindUI then
-    warn("[Zenith] Failed to load WindUI library!")
+    warn("[Love Thảo EGG] Failed to load WindUI library!")
     return
 end
 
