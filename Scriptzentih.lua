@@ -13,6 +13,21 @@ local currentLang="EN"
 local executorCheckCaller=typeof(checkcaller)=="function" and checkcaller or function() return false end
 local safeNewCClosure=typeof(newcclosure)=="function" and newcclosure or function(fn) return fn end
 
+-- Automatically destroy any leftover login GUIs from earlier executions
+pcall(function()
+    local function cleanGuis(container)
+        if not container then return end
+        for _, child in ipairs(container:GetChildren()) do
+            if child.Name == "ZenithAuth_LoginUI" or string.find(tostring(child.Name), "ZenithAuth") or string.find(tostring(child.Name), "LoginUI") then
+                pcall(function() child:Destroy() end)
+            end
+        end
+    end
+    pcall(function() if typeof(gethui) == "function" then cleanGuis(gethui()) end end)
+    pcall(function() cleanGuis(game:GetService("CoreGui")) end)
+    pcall(function() if o and o:FindFirstChild("PlayerGui") then cleanGuis(o.PlayerGui) end end)
+end)
+
 -- ==============================================================================
 -- [ZENITH ANTI-CHEAT BYPASS & ANTI-KICK SYSTEM] (Fix CODE BAC 1513)
 -- ==============================================================================
