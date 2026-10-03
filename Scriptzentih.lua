@@ -12,6 +12,95 @@ local Window=nil
 local currentLang="EN"
 local executorCheckCaller=typeof(checkcaller)=="function" and checkcaller or function() return false end
 local safeNewCClosure=typeof(newcclosure)=="function" and newcclosure or function(fn) return fn end
+-- ==============================================================================
+-- [ZENITH ANTI-CHEAT BYPASS & ANTI-KICK SYSTEM] (Fix KICK CODE 300 & BAC 1513)
+-- ==============================================================================
+local function bypassClientDetections()
+    local blocked = 0
+    local setMeta = (typeof(setrawmetatable) == "function" and setrawmetatable)
+        or (typeof(setmetatable) == "function" and setmetatable)
+    if not setMeta then return false, "no setmeta" end
+
+    -- Method 1: filtergc (Solara / Wave / Synapse Z / Delta / Arceus X)
+    if typeof(filtergc) == "function" and typeof(debug) == "table" and typeof(debug.getupvalues) == "function" then
+        local ok, fn = pcall(function()
+            return filtergc("function", { Constants = { "gmatch", "GetFullName" } }, true)
+        end)
+        if ok and type(fn) == "function" then
+            local okUv, ups = pcall(debug.getupvalues, fn)
+            if okUv and type(ups) == "table" then
+                for _, tbl in pairs(ups) do
+                    if typeof(tbl) == "table" then
+                        local okSet = pcall(setMeta, tbl, { __newindex = function() end })
+                        if okSet then blocked = blocked + 1 end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Method 2: getgc fallback
+    if blocked == 0 and typeof(getgc) == "function" and typeof(debug) == "table" and typeof(debug.getconstants) == "function" and typeof(debug.getupvalues) == "function" then
+        pcall(function()
+            for _, obj in pairs(getgc(true)) do
+                if type(obj) == "function" and (typeof(isexecutorclosure) ~= "function" or not isexecutorclosure(obj)) then
+                    local okConst, consts = pcall(debug.getconstants, obj)
+                    if okConst and type(consts) == "table" then
+                        local hasGmatch, hasFullName = false, false
+                        for _, c in pairs(consts) do
+                            if c == "gmatch" then hasGmatch = true end
+                            if c == "GetFullName" then hasFullName = true end
+                        end
+                        if hasGmatch and hasFullName then
+                            local okUv, ups = pcall(debug.getupvalues, obj)
+                            if okUv and type(ups) == "table" then
+                                for _, tbl in pairs(ups) do
+                                    if typeof(tbl) == "table" then
+                                        local okSet = pcall(setMeta, tbl, { __newindex = function() end })
+                                        if okSet then blocked = blocked + 1 end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    return blocked > 0, blocked
+end
+pcall(bypassClientDetections)
+
+-- Anti-Kick Protection (__namecall hook & LocalPlayer.Kick hook)
+if typeof(hookmetamethod) == "function" and not _G._ZenithAntiKickHooked then
+    _G._ZenithAntiKickHooked = true
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", safeNewCClosure(function(self, ...)
+        local method = getnamecallmethod()
+        if not executorCheckCaller() and (method == "Kick" or method == "kick") and (self == o or self == e.LocalPlayer) then
+            warn("[Zenith Anti-Kick] Blocked __namecall Kick attempt: ", ...)
+            return nil
+        end
+        return oldNamecall(self, ...)
+    end))
+end
+
+if typeof(hookfunction) == "function" and not _G._ZenithHookKickFunction then
+    _G._ZenithHookKickFunction = true
+    pcall(function()
+        local lp = e.LocalPlayer or o
+        if lp and typeof(lp.Kick) == "function" then
+            local oldKick
+            oldKick = hookfunction(lp.Kick, safeNewCClosure(function(self, ...)
+                if not executorCheckCaller() and (self == o or self == lp) then
+                    warn("[Zenith Anti-Kick] Blocked direct LocalPlayer:Kick attempt: ", ...)
+                    return nil
+                end
+                return oldKick(self, ...)
+            end))
+        end
+    end)
+end
 local V=game:GetService( "ProximityPromptService" )pcall(function(...) V.PromptButtonHoldBegan :Connect(function(e,...) pcall(function(...)
             if typeof(fireproximityprompt)== "function" then
                 fireproximityprompt(e)
@@ -110,8 +199,8 @@ local M={ "Light Dark" ;
 "Volcano" ;
 "Snow" , "Jungle" , "Desert" , "Lake" ;
 "Forest" }
-local I={[ "Light Dark" ]= 420 ,[ "LightDark" ]= 420 ;
-[ "Titan Temple" ]= 380 ,[ "Cherry Blossom" ]= 330 ,[ "Cosmic" ]= 280 ;
+local I={[ "Light Dark" ]= 285 ,[ "LightDark" ]= 285 ;
+[ "Titan Temple" ]= 280 ,[ "Cherry Blossom" ]= 270 ,[ "Cosmic" ]= 260 ;
 [ "Prehistoric" ]= 240 ,[ "Abyss Ocean" ]= 200 ;
 [ "Volcano" ]= 180 ;
 [ "Snow" ]= 160 ,[ "Jungle" ]= 140 ;
@@ -148,7 +237,7 @@ local F={[ "Divine" ]= 6 ;
 [ "Common" ]= 0 }
 local h
 local function O(...)
-    local e= 600 pcall(function(...)
+    local e= 260 pcall(function(...)
         local r= false
         if isfile then
             r=isfile(Z)
@@ -158,7 +247,7 @@ local function O(...)
         if r and readfile then
             local r=readfile(Z)
             local u=tonumber(r)
-            if u and(u>= 100 and u<= 1000 )then
+            if u and(u>= 100 and u<= 285 )then
                 e=math.floor (u)
             end
         end
@@ -168,7 +257,7 @@ local function O(...)
 end
 local function Y(e,...) pcall(function(...)
         if writefile then
-            local y=math.clamp (math.floor (tonumber(e)or 600 ), 100 , 1000 )writefile(Z,tostring(y))
+            local y=math.clamp (math.floor (tonumber(e)or 260 ), 100 , 285 )writefile(Z,tostring(y))
         end
     end
     )
@@ -465,14 +554,10 @@ u4=function(e,...)
     if h and h.isReturning then
         return
     end
-    local r=o.Character
-    local hrp=r and r:FindFirstChild( "HumanoidRootPart" )
-    if hrp and hrp.Position.X > 530 then
-        return
-    end
     if not e and not((h.pureTweenFarm or h.autoFarmLoop or h.teleporting ))then
         return
     end
+    local r=o.Character
     local u=o:FindFirstChild( "Backpack" )
     if r and u and not (h and h.isReturning) then
         for _,tool in ipairs(r:GetChildren())do
@@ -748,19 +833,19 @@ o4=function(...)
         local e,y=r4()r=y
     end
     if not r then
-        return h.glideSpeed or 350
+        return math.min(h.glideSpeed or 260, 285)
     end
     if s and s.ReadFieldEggs then
         local e,u=pcall(s.ReadFieldEggs )
         if e and(u and u.Records )then
             for e,u in ipairs(u.Records )do
                 if u.Uid ==r and u.AreaId then
-                    return I[u.AreaId ]or h.glideSpeed or 350
+                    return math.min(I[u.AreaId ]or h.glideSpeed or 260, 285)
                 end
             end
         end
     end
-    return h.glideSpeed or 350
+    return math.min(h.glideSpeed or 260, 285)
 end
 V4=function(e,y,...) y=y or 8
     local u=Instance.new ( "Part" )u.Name = "SafetyFloorPad_AntiVoid" u.Size =Vector3.new ( 28 , 1.5 , 28 )u.Position =e-Vector3.new ( 0 , 3.2 , 0 )u.Anchored = true u.Transparency = 1 u.CanCollide = true u.Parent =r task.delay (y,function(...) pcall(function(...) u:Destroy()
@@ -1615,7 +1700,7 @@ g4=function(e,r,u,...)
     if k then
         k.AutoRotate = false
     end
-    local a=s4()e=math.max ( 100 ,e or h.glideSpeed or 600 )
+    local a=s4()e=math.max ( 100 ,math.min(e or h.glideSpeed or 260, 285) )
     local V=h.laneZ or L h.isReturning = true h.stateTime =os.clock ()V4(a, 20 )j.AssemblyLinearVelocity =Vector3.zero j.AssemblyAngularVelocity =Vector3.zero
     local H=o4()
     local t=math.max (e,H)
@@ -1703,7 +1788,7 @@ v4=function(e,r,y,...)
     local k=s4()
     local a=((w.Position -k)).Magnitude
     if a> 8 then
-        h.statusText = "[Place] Tweening back to base plot..." g4(e or h.glideSpeed or 600 ,r, true )
+        h.statusText = "[Place] Tweening back to base plot..." g4(math.min(e or h.glideSpeed or 260, 285),r, true )
     end
     V4(k, 15 )w.CFrame =CFrame.new (k)w.AssemblyLinearVelocity =Vector3.zero h.statusText = "[Place] Placing All Eggs to Stand..."
     local V=os.clock ()+ 3
@@ -1725,7 +1810,7 @@ local uk= 5 K4=function(e,...)
     local j=s4()
     local k=u and((u.Position -j)).Magnitude or 999
     if k> 8 then
-        h.statusText = "[AutoPlace] Tweening home to base plot..." g4(h.glideSpeed or 600 ,r, true )
+        h.statusText = "[AutoPlace] Tweening home to base plot..." g4(math.min(h.glideSpeed or 260, 285),r, true )
     end
     if u then
         V4(j, 20 )u.CFrame =CFrame.new (j)u.AssemblyLinearVelocity =Vector3.zero u.AssemblyAngularVelocity =Vector3.zero
@@ -1776,7 +1861,7 @@ local function wk(e,r,u,w,...)
     if a then
         a.AutoRotate = false
     end
-    r=math.max ( 60 ,r or h.glideSpeed or 350 )
+    r=math.max ( 60 ,math.min(r or h.glideSpeed or 260, 285) )
     local V=e.Position V4(V, 14 )pcall(function(...) o:RequestStreamAroundAsync(V)
     end
     )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
@@ -1897,7 +1982,7 @@ Q4=function(e,r,...)
         j.AutoRotate = false
     end
     local k=h.laneZ or L
-    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,math.min(e or h.glideSpeed or 260, 285) )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
     local H=math.max (e,V)
     local s=os.clock ()+ 15
@@ -2131,7 +2216,7 @@ f4=function(e,...)
     local V=((Vector2.new (u.Position.X ,u.Position.Z )-Vector2.new (a.X ,a.Z ))).Magnitude
     if V> 4 then
         h.statusText = "[AutoTreadmill] Elevated flyover to base plot..."
-        local r=math.max ( 250 ,h.glideSpeed or 400 )
+        local r=math.max ( 150 ,math.min(h.glideSpeed or 260, 285) )
         local j=os.clock ()
         while h.alive and(((Vector2.new (u.Position.X ,u.Position.Z )-Vector2.new (a.X ,a.Z ))).Magnitude > 4 and(os.clock ()-j< 4 ))do
             if e and O4~=e then
@@ -3383,7 +3468,7 @@ l4=function(e,u,...)
     h.holdingEggForGuard = true H4(K)
     local R=os.clock ()
     local g= false
-    local Q=os.clock ()+ 2.5
+    local Q=os.clock ()+ 0.6
     local P= false
     while os.clock ()<Q and(h.alive and h.teleporting )do
         if u and O4~=u then
@@ -3399,14 +3484,14 @@ l4=function(e,u,...)
         local w=j.Position
         local a=w.Y -J
         local o=((w-B)).Magnitude
-        if e>= 0.08 then
-            local e=c or(r.Y >= 10 )or(a>= 1.5 and r.Magnitude >= 16 )or(o>= 2 )or(r.Magnitude >= 20 )
+        if e>= 0.04 then
+            local e=c or(r.Y >= 8 )or(a>= 1.0 and r.Magnitude >= 12 )or(o>= 1.5 )or(r.Magnitude >= 16 )
             if e then
                 g= true
                 break
             end
         end
-        if e>= 0.5 and not P then
+        if e>= 0.3 and not P then
             P= true H4(K)
         end
         y.Heartbeat :Wait()
@@ -3419,7 +3504,7 @@ l4=function(e,u,...)
         t( "[-] No bounce detected, aborting" )h.statusText = "[-] Aborted (No bounce detected)" D4()pcall(u4)
         return false
     end
-    task.wait ( 0.05 )
+    task.wait ( 0.01 )
     if V then
         local e,r=k4(V)
         if not e and r== "CarriedByOther" then
@@ -5328,6 +5413,25 @@ CharTab:Button({
 	end,
 })
 
+CharTab:Section({ Title = "Tốc độ di chuyển (True Game Speed)" })
+CharTab:Toggle({
+	Title = "Giữ tốc độ thực khi cầm Trứng/Pet",
+	Desc = "Tự động khóa và duy trì tốc độ Trail/Game khi đang trộm trứng hoặc bế pet.",
+	Value = h.antiSlowEnabled ~= false,
+	Callback = function(state)
+		h.antiSlowEnabled = state
+	end,
+})
+CharTab:Slider({
+	Title = "Tốc độ chạy tùy chỉnh (Min WalkSpeed)",
+	Desc = "Chỉnh tốc độ chạy tối thiểu nếu muốn chạy nhanh hơn mặc định.",
+	Step = 2,
+	Value = { Min = 16, Max = 95, Default = h.customWalkSpeed or 32 },
+	Callback = function(v)
+		h.customWalkSpeed = tonumber(v)
+	end,
+})
+
 -- ESP TRỨNG (WORLD & VƯỜN NHÀ)
 EspTab:Section({ Title = "ESP Trứng (World & Vườn)" })
 EspTab:Toggle({
@@ -5398,8 +5502,128 @@ SettingsTab:Button({
 
 
 -- ==========================================
--- ANTI-SLOW WALK GUARD (fixes slow when holding egg/pet)
+-- ACTIVE MOBILITY & SAFE PHYSICS SPEED ENGINE (BodyVelocity - No WalkSpeed Desync, Anti-Kick Safe)
 -- ==========================================
+_G._ZenithNaturalGameSpeed = _G._ZenithNaturalGameSpeed or 16
+
+local function getEquippedTrailMultiplier()
+    local mult = 1
+    local char = o.Character
+    if char then
+        for _, item in ipairs(char:GetDescendants()) do
+            if item:IsA("Trail") or item:IsA("Attachment") or item:IsA("StringValue") then
+                local n = item.Name:lower()
+                for _, t in ipairs(Bk) do
+                    if n:find(t.id:lower()) or n:find(t.base:lower()) then
+                        if t.mult > mult then mult = t.mult end
+                    end
+                end
+            end
+        end
+    end
+    pcall(function()
+        local tr = o:GetAttribute("EquippedTrail") or (char and char:GetAttribute("EquippedTrail"))
+        if tr then
+            local str = tostring(tr):lower()
+            for _, t in ipairs(Bk) do
+                if str:find(t.id:lower()) or str:find(t.base:lower()) then
+                    if t.mult > mult then mult = t.mult end
+                end
+            end
+        end
+    end)
+    return mult
+end
+
+local function getTrueGameSpeed()
+    local baseSpeed = 16
+    local trailMult = getEquippedTrailMultiplier()
+    local calculatedSpeed = baseSpeed * trailMult
+    local customSpeed = h.customWalkSpeed or 0
+    return math.clamp(math.max(calculatedSpeed, customSpeed, 28), 16, 95)
+end
+
+local function isHoldingEggOrPet(char)
+    if not char then return false end
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Tool") then
+            local n = child.Name:lower()
+            if m(child) or child:GetAttribute("EggUid") or child:GetAttribute("Pet") or child:GetAttribute("ItemType") == "Egg" or child:GetAttribute("ItemType") == "Pet" or n:find("egg") or n:find("pet") then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local speedBV = nil
+local function ensurePlayerMobility(char)
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    
+    if not hum or not hrp or hum.Health <= 0 then
+        if speedBV then pcall(function() speedBV:Destroy() end) speedBV = nil end
+        return
+    end
+
+    local isFarming = (h.teleporting or h.securingEgg or h.isReturning or h.glidingToTarget)
+
+    if hrp and not isFarming then
+        if hrp.Anchored then hrp.Anchored = false end
+    end
+    
+    -- Eliminate mass and physics collisions on all held tools (Eggs & Pets)
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            for _, p in ipairs(tool:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    p.Massless = true
+                    p.CanCollide = false
+                    p.CustomPhysicalProperties = PhysicalProperties.new(0.001, 0, 0, 0, 0)
+                end
+            end
+        end
+    end
+
+    -- Physics velocity boost (Zero WalkSpeed tampering - No Desync / No Error 300)
+    local holding = isHoldingEggOrPet(char)
+    if h.antiSlowEnabled ~= false and (holding or (h.customWalkSpeed and h.customWalkSpeed > 16)) and not isFarming then
+        local targetSpeed = getTrueGameSpeed()
+        local moveDir = hum.MoveDirection
+        if moveDir.Magnitude > 0.05 then
+            if not speedBV or speedBV.Parent ~= hrp then
+                if speedBV then pcall(function() speedBV:Destroy() end) end
+                speedBV = Instance.new("BodyVelocity")
+                speedBV.Name = "ZenithMobilityBV"
+                speedBV.MaxForce = Vector3.new(8e4, 0, 8e4) -- Only X/Z plane: Jump/Gravity work naturally!
+                speedBV.Parent = hrp
+            end
+            speedBV.Velocity = moveDir * targetSpeed
+        else
+            if speedBV then
+                speedBV.Velocity = Vector3.zero
+            end
+        end
+    else
+        if speedBV then
+            pcall(function() speedBV:Destroy() end)
+            speedBV = nil
+        end
+    end
+
+    hum.AutoRotate = true
+    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+end
+
+y.Heartbeat:Connect(function()
+    if h.alive and o.Character then
+        pcall(ensurePlayerMobility, o.Character)
+    end
+end)
+
+-- Background safe WalkSpeed guard (No Heartbeat spam, safe interval 0.5s)
 task.spawn(function()
     while h.alive do
         pcall(function()
@@ -5409,23 +5633,66 @@ task.spawn(function()
                 if hum and hum.WalkSpeed < 14 and not h.holdingEggForGuard then
                     hum.WalkSpeed = 16
                 end
-                if hum then
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-                    if hum.JumpHeight < 7 then
-                        hum.JumpHeight = 7.2
-                    end
-                end
             end
         end)
         task.wait(0.5)
     end
 end)
 
-print("[Vortex X Sage] Steal An Egg WindUI loaded")
+-- Enable and refresh PlayerModule controls so WASD/Touch controls always respond
+local function refreshPlayerControls()
+    pcall(function()
+        local ps = o:FindFirstChild("PlayerScripts")
+        if ps then
+            local pm = ps:FindFirstChild("PlayerModule")
+            if pm then
+                local controls = require(pm):GetControls()
+                if controls then
+                    controls:Enable(true)
+                end
+            end
+        end
+    end)
+end
+refreshPlayerControls()
+
+-- Universal spacebar / touch jump handler
+pcall(function()
+    w.JumpRequest:Connect(function()
+        local char = o.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            hum.Jump = true
+            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Jumping) end)
+        end
+    end)
+end)
+
+local function hookCharTools(char)
+    if not char then return end
+    char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then
+            task.wait()
+            pcall(function()
+                for _, p in ipairs(child:GetDescendants()) do
+                    if p:IsA("BasePart") then
+                        p.Massless = true
+                        p.CanCollide = false
+                        p.CustomPhysicalProperties = PhysicalProperties.new(0.001, 0, 0, 0, 0)
+                    end
+                end
+            end)
+            -- Weightless parts applied above; BodyVelocity handles velocity smoothly without WalkSpeed desync
+        end
+    end)
+end
+if o.Character then pcall(hookCharTools, o.Character) end
+
+print("[Love Thảo EGG] WindUI & Mobility Systems loaded successfully!")
 
 task.spawn(function()
-	task.wait(0.5)
-	pcall(A4)
+	task.wait(0.2)
 	pcall(function() b4(true) end)
 	pcall(C4)
 	if o.Character then
@@ -5433,18 +5700,21 @@ task.spawn(function()
 	end
 	pcall(u4)
 	pcall(scanAndNeutralizeTraps)
+    pcall(refreshPlayerControls)
 end)
+
 o.CharacterAdded:Connect(function(char)
-	task.wait(0.6)
+	task.wait(0.3)
 	if h.alive then
 		pcall(D4)
 		pcall(n4)
 		pcall(C4)
-		pcall(A4)
 		pcall(function() b4(true) end)
 		pcall(z4, char)
 		pcall(u4)
 		pcall(scanAndNeutralizeTraps)
+        pcall(hookCharTools, char)
+        pcall(refreshPlayerControls)
 	end
 end)
 if h.performanceMode then
