@@ -930,7 +930,17 @@ Z4=function(e,...)
     end
     local r=e:FindFirstChildOfClass( "Humanoid" )
     if r then
-        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )r:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )r:SetStateEnabled(Enum.HumanoidStateType.Physics , false )r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )r:SetStateEnabled(Enum.HumanoidStateType.Seated , false )
+        r:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        r:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        r:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+        r.UseJumpPower = true
+        if r.JumpPower < 50 then r.JumpPower = 50 end
+        if r.JumpHeight < 7.2 then r.JumpHeight = 7.2 end
         if r.PlatformStand then
             r.PlatformStand = false
         end
@@ -1293,10 +1303,14 @@ b4=function(e,...) h.godmode =e
     end
     local y=r:FindFirstChildOfClass( "Humanoid" )
     if y then
-        y:SetStateEnabled(Enum.HumanoidStateType.Dead ,not e)
-        if e and y.Health < 100 then
-            y.Health = 100
-        end
+        -- ALWAYS keep Dead state enabled so Reset Character works 100% of the time!
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        y.UseJumpPower = true
+        if y.JumpPower < 50 then y.JumpPower = 50 end
+        if y.JumpHeight < 7.2 then y.JumpHeight = 7.2 end
     end
     for _,part in ipairs(r:GetDescendants())do
         if part:IsA( "BasePart" )then
@@ -1327,24 +1341,26 @@ A4=function(...)
     if not e or not y then
         return false
     end
-    pcall(function(...) y.BreakJointsOnDeath = false
-        local w=y:Clone()w.Parent =e y:Destroy()
-        local j=w:FindFirstChildOfClass( "Animator" )
-        if not j then
-            j=Instance.new ( "Animator" )j.Parent =w
-        end
-        r.CurrentCamera.CameraSubject =w
-        local k=e:FindFirstChild( "Animate" )
-        if k and k:IsA( "LocalScript" )then
-            k.Disabled = true task.defer (function(...) task.wait ( 0.05 )k.Disabled = false
-            end
-            )
-        end
-        w:SetStateEnabled(Enum.HumanoidStateType.Jumping , true )w:SetStateEnabled(Enum.HumanoidStateType.Freefall , true )w:SetStateEnabled(Enum.HumanoidStateType.Running , true )w:SetStateEnabled(Enum.HumanoidStateType.Climbing , true )w:SetStateEnabled(Enum.HumanoidStateType.Ragdoll , false )w:SetStateEnabled(Enum.HumanoidStateType.FallingDown , false )w:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding , false )w.JumpPower =math.max ( 50 ,w.JumpPower )w.JumpHeight =math.max ( 7.2 ,w.JumpHeight )w.AutoRotate = true w.PlatformStand = false w.Sit = false w:ChangeState(Enum.HumanoidStateType.Running )
-    end
-    )h.swapped = true
+    -- Keep original Humanoid intact! NEVER destroy or clone, so Reset and Spacebar Jump work 100%!
+    pcall(function(...)
+        y:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+        y:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        y:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        y:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+        y.UseJumpPower = true
+        if y.JumpPower < 50 then y.JumpPower = 50 end
+        if y.JumpHeight < 7.2 then y.JumpHeight = 7.2 end
+        y.AutoRotate = true
+        y.PlatformStand = false
+        y.Sit = false
+    end)
+    h.swapped = true
     if h.godmode then
-        b4( true )
+        b4(true)
     end
     z4(e)
     return true
