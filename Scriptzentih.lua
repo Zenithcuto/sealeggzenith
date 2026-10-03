@@ -194,21 +194,24 @@ local C=J( "RF/Trailwear/AskPurchase" , "Trailwear: RequestPurchase" , "AskPurch
 local q=J( "RF/Trailwear/AskChoose" , "Trailwear: RequestEquip" , "AskChoose" )
 local n=J( "RF/Trailwear/AskDoff" , "Trailwear: RequestUnequip" , "AskDoff" )H(string.format ( "[RemoteCheck] Carry: %s | Snapshot: %s | Place: %s | Hatch: %s | FinishHatch: %s | Strike: %s | Toll: %s | Doff: %s" ,tostring(i~=nil),tostring(R~=nil),tostring(K~=nil),tostring(g~=nil),tostring(Q~=nil),tostring(P~=nil),tostring(N~=nil),tostring(U~=nil)))
 
-local f={[ "Light Dark" ]= 1300 ,[ "LightDark" ]= 1300 ;
+local f={[ "Enchanted Forest" ]= 1500 ,[ "EnchantedForest" ]= 1500 ;
+[ "Light Dark" ]= 1300 ,[ "LightDark" ]= 1300 ;
 [ "Titan Temple" ]= 1100 ,[ "Cherry Blossom" ]= 1000 ,[ "Cosmic" ]= 900 ;
 [ "Prehistoric" ]= 800 ;
 [ "Abyss Ocean" ]= 700 ,[ "Volcano" ]= 600 ;
 [ "Snow" ]= 500 ,[ "Jungle" ]= 400 ;
 [ "Desert" ]= 300 ,[ "Lake" ]= 200 ;
 [ "Forest" ]= 100 }
-local M={ "Light Dark" ;
+local M={ "Enchanted Forest" ;
+"Light Dark" ;
 "Titan Temple" ;
 "Cherry Blossom" , "Cosmic" ;
 "Prehistoric" , "Abyss Ocean" ;
 "Volcano" ;
 "Snow" , "Jungle" , "Desert" , "Lake" ;
 "Forest" }
-local I={[ "Light Dark" ]= 650 ,[ "LightDark" ]= 650 ;
+local I={[ "Enchanted Forest" ]= 700 ,[ "EnchantedForest" ]= 700 ;
+[ "Light Dark" ]= 650 ,[ "LightDark" ]= 650 ;
 [ "Titan Temple" ]= 650 ,[ "Cherry Blossom" ]= 600 ,[ "Cosmic" ]= 600 ;
 [ "Prehistoric" ]= 600 ,[ "Abyss Ocean" ]= 550 ;
 [ "Volcano" ]= 550 ;
@@ -222,7 +225,7 @@ local S=CFrame.new ( 4773.7587890625 , 70.392112731934 , -315.73501586914 )
 
 local Z= "DiceHub_FlightSpeed.txt"
 local z= "DiceHub_EggSelectConfig.json"
-local d={[ "Light Dark" ]=Color3.fromRGB ( 168 , 85 , 247 ),[ "Titan Temple" ]=Color3.fromRGB ( 245 , 158 , 11 );
+local d={[ "Enchanted Forest" ]=Color3.fromRGB ( 52 , 211 , 153 ),[ "Light Dark" ]=Color3.fromRGB ( 168 , 85 , 247 ),[ "Titan Temple" ]=Color3.fromRGB ( 245 , 158 , 11 );
 [ "Cherry Blossom" ]=Color3.fromRGB ( 236 , 72 , 153 );
 [ "Cosmic" ]=Color3.fromRGB ( 6 , 182 , 212 ),[ "Prehistoric" ]=Color3.fromRGB ( 16 , 185 , 129 ),[ "Abyss Ocean" ]=Color3.fromRGB ( 59 , 130 , 246 );
 [ "Volcano" ]=Color3.fromRGB ( 239 , 68 , 68 ),[ "Snow" ]=Color3.fromRGB ( 147 , 197 , 253 ),[ "Jungle" ]=Color3.fromRGB ( 34 , 197 , 94 ),[ "Desert" ]=Color3.fromRGB ( 234 , 179 , 8 ),[ "Lake" ]=Color3.fromRGB ( 20 , 184 , 166 ),[ "Forest" ]=Color3.fromRGB ( 22 , 163 , 74 )}
@@ -290,7 +293,7 @@ local function T(...)
         end
     end
     )
-    local r={[ "Light Dark" ]= true ,[ "Titan Temple" ]= true ,[ "Cherry Blossom" ]= true ;
+    local r={[ "Enchanted Forest" ]= true ,[ "Light Dark" ]= true ,[ "Titan Temple" ]= true ,[ "Cherry Blossom" ]= true ;
     [ "Cosmic" ]= false ;
     [ "Prehistoric" ]= false ,[ "Abyss Ocean" ]= false ;
     [ "Volcano" ]= false ,[ "Snow" ]= false ;
@@ -310,6 +313,10 @@ local function T(...)
     else
         if type(e.selectedZones )~= "table" then
             e.selectedZones =r
+        else
+            if e.selectedZones ["Enchanted Forest"]==nil then
+                e.selectedZones ["Enchanted Forest"]= true
+            end
         end
         if type(e.selectedRarities )~= "table" then
             e.selectedRarities =y
@@ -857,7 +864,7 @@ o4=function(...)
     return h.glideSpeed or 650
 end
 V4=function(e,y,...) y=y or 8
-    local u=Instance.new ( "Part" )u.Name = "SafetyFloorPad_AntiVoid" u.Size =Vector3.new ( 28 , 1.5 , 28 )u.Position =e-Vector3.new ( 0 , 3.2 , 0 )u.Anchored = true u.Transparency = 1 u.CanCollide = true u.Parent =r task.delay (y,function(...) pcall(function(...) u:Destroy()
+    local u=Instance.new ( "Part" )u.Name = "SafetyFloorPad_AntiVoid" u.Size =Vector3.new ( 24 , 1 , 24 )u.Position =e-Vector3.new ( 0 , 4.5 , 0 )u.Anchored = true u.Transparency = 1 u.CanCollide = true u.CanTouch = false u.Parent =r task.delay (y,function(...) pcall(function(...) u:Destroy()
         end
         )
     end
@@ -1268,7 +1275,6 @@ d4=function(e,y,...)
                     prompt.MaxActivationDistance = 32
                     if typeof(fireproximityprompt) == "function" then
                         fireproximityprompt(prompt, 0)
-                        fireproximityprompt(prompt)
                     end
                 end)
             end
@@ -1278,7 +1284,7 @@ d4=function(e,y,...)
     if areaSlots and y then
         for _, slot in ipairs(areaSlots:GetChildren())do
             local rootPart = slot:FindFirstChildWhichIsA("BasePart") or slot.PrimaryPart
-            if rootPart and ((rootPart.Position - y)).Magnitude <= 24 then
+            if rootPart and ((rootPart.Position - y)).Magnitude <= 14 then
                 for _, prompt in ipairs(slot:GetDescendants())do
                     if prompt:IsA("ProximityPrompt")then
                         pcall(function(...)
@@ -1287,11 +1293,11 @@ d4=function(e,y,...)
                             prompt.MaxActivationDistance = 32
                             if typeof(fireproximityprompt) == "function" then
                                 fireproximityprompt(prompt, 0)
-                                fireproximityprompt(prompt)
                             end
                         end)
                     end
                 end
+                break
             end
         end
     end
@@ -1314,12 +1320,18 @@ b4=function(e,...) h.godmode =e
     end
     for _,part in ipairs(r:GetDescendants())do
         if part:IsA( "BasePart" )then
-            part.CanTouch = true
-            if e and (h.glidingToTarget or h.isReturning or h.teleporting) then
-                if part.Name ~= "HumanoidRootPart" and part.Name ~= "Torso" and part.Name ~= "UpperTorso" and part.Name ~= "LowerTorso" then
+            if e then
+                -- Disable CanTouch so traps, spikes, bear traps, guards and lasers NEVER deal damage!
+                part.CanTouch = false
+                if h.glidingToTarget or h.isReturning or h.teleporting or h.securingEgg then
                     part.CanCollide = false
+                else
+                    if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
+                        part.CanCollide = true
+                    end
                 end
             else
+                part.CanTouch = true
                 if part.Name == "HumanoidRootPart" or part.Name == "Torso" or part.Name == "UpperTorso" or part.Name == "LowerTorso" then
                     part.CanCollide = true
                 end
@@ -1974,7 +1986,7 @@ local function wk(e,r,u,w,...)
             h.statusText =string.format ( "Gliding -> Egg (%.0f studs | H: %.0f)" ,j,o)
         end
     end
-    k.CFrame =e*CFrame.new ( 0 , 0.4 , 0 )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
+    k.CFrame =e*CFrame.new ( 0 , 3.2 , 0 )k.AssemblyLinearVelocity =Vector3.zero k.AssemblyAngularVelocity =Vector3.zero
     if a then
         a.AutoRotate = true
     end
@@ -2012,82 +2024,69 @@ Q4=function(e,r,...)
     if j then
         j.AutoRotate = false
     end
-    local k=h.laneZ or L
-    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 650 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
-    local V=o4()
-    local H=math.max (e,V)
-    local s=os.clock ()+ 15
-    while h.alive and(h.isReturning and os.clock ()<s)do
-        if r and O4~=r then
-            t( "[Return] Aborted by session switch!" )
-            if j then
-                j.AutoRotate = true
-            end
+    local homePos = s4() or Vector3.new(E, 75, -360)
+    local a = Vector3.new(homePos.X, math.max(homePos.Y, 72), homePos.Z)
+    e = math.max(100, e or h.glideSpeed or 650)
+    h.isReturning = true
+    h.stateTime = os.clock()
+    w.AssemblyLinearVelocity = Vector3.zero
+    w.AssemblyAngularVelocity = Vector3.zero
+    local H = e
+    local s = os.clock() + 15
+    local cruiseY = math.max(w.Position.Y, a.Y, 110)
+    
+    while h.alive and (h.isReturning and os.clock() < s) do
+        if r and O4 ~= r then
+            t("[Return] Aborted by session switch!")
+            if j then j.AutoRotate = true end
             h.isReturning = false
             return false
         end
         if not h.pureTweenFarm and not h.autoFarmLoop then
-            t( "[Return] Aborted (all farms disabled)" )
-            if j then
-                j.AutoRotate = true
-            end
+            t("[Return] Aborted (all farms disabled)")
+            if j then j.AutoRotate = true end
             h.isReturning = false
             return false
         end
-        local e=w.Position
-        local o=((a-e)).Magnitude
-        if e.X <=(E+ 10 )or o<= 6 then
+        local currentPos = w.Position
+        local dist2D = (Vector2.new(a.X, a.Z) - Vector2.new(currentPos.X, currentPos.Z)).Magnitude
+        if dist2D <= 8 then
             break
         end
-        local V=y.Heartbeat :Wait()e=w.Position
-        local s=H
-        if e.X <=b and e.X >E then
-            local r=math.clamp (((e.X -E))/((b-E)), 0 , 1 )s=A+(((H-A))*r)
-        elseif e.X <=E then
-            s=A
-        end
-        local B=math.sign (a.X -e.X )
-        local J=B*math.min (math.abs (a.X -e.X ),s*V)
-        local K=e.X +J
-        local c=math.sign (a.Y -e.Y )
-        local v=c*math.min (math.abs (a.Y -e.Y ),(s*V)* 0.5 )
-        local i=e.Y +v
-        local R=k-e.Z
-        local g=math.sign (R)*math.min (math.abs (R),s*V)
-        local Q=e.Z +g
-        local P=i4()
-        local N= false
-        for e,r in ipairs(P)do
-            local y=r.Position
-            local u=((Vector3.new (K,i,Q)-y)).Magnitude
-            local w=math.abs (K-y.X )
-            local j=math.abs (Q-y.Z )
-            if u< 22 or(w< 18 and j< 14 )then
-                N= true
-                local e=y.Y + 16
-                if i<e then
-                    i=math.min (i+((s*V)* 1.5 ),e)
-                end
-                break
-            end
-        end
-        local U=Vector3.new (K,i,Q)
-        local l=((U-e)).Magnitude > 0.05 and((U-e)).Unit or w.CFrame.LookVector w.CFrame =CFrame.lookAt (U,U+l)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
-        if N then
-            h.statusText =string.format ( "Tweening Safe Line (Z: %.0f) [DODGING!]" ,Q)
-        else
-            h.statusText =string.format ( "Tweening to Safe Line (%.0f studs | X: %.0f)" ,o,e.X )
-        end
+        local dt = y.Heartbeat:Wait()
+        currentPos = w.Position
+        local step = H * dt
+        
+        -- Fly at safe cruise altitude until near base, then smoothly descend
+        local targetY = (dist2D <= 35) and a.Y or cruiseY
+        local dirX = math.sign(a.X - currentPos.X)
+        local nextX = currentPos.X + dirX * math.min(math.abs(a.X - currentPos.X), step)
+        local dirY = math.sign(targetY - currentPos.Y)
+        local nextY = currentPos.Y + dirY * math.min(math.abs(targetY - currentPos.Y), step * 0.8)
+        local dirZ = math.sign(a.Z - currentPos.Z)
+        local nextZ = currentPos.Z + dirZ * math.min(math.abs(a.Z - currentPos.Z), step)
+        
+        local nextPos = Vector3.new(nextX, nextY, nextZ)
+        local look = ((nextPos - currentPos)).Magnitude > 0.05 and ((nextPos - currentPos)).Unit or w.CFrame.LookVector
+        w.CFrame = CFrame.lookAt(nextPos, nextPos + look)
+        w.AssemblyLinearVelocity = Vector3.zero
+        w.AssemblyAngularVelocity = Vector3.zero
+        h.statusText = string.format("Returning Home (%.0f studs left)...", dist2D)
     end
-    w.CFrame =CFrame.new (E,math.max ( 68 ,w.Position.Y ),k)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+    
+    w.CFrame = CFrame.new(a + Vector3.new(0, 3.2, 0))
+    w.AssemblyLinearVelocity = Vector3.zero
+    w.AssemblyAngularVelocity = Vector3.zero
     if j then
         j.AutoRotate = true
     end
-    u4()h.isReturning = false h.delivering = false
+    u4()
+    h.isReturning = false
+    h.delivering = false
     if h then
         h.onTreadmill = false
     end
-    h.statusText = "Arrived at Safe Line (X=525)! Hands Free."
+    h.statusText = "Arrived at Base! Hands Free."
     return true
 end
 local function jk(e,...)
@@ -2927,6 +2926,9 @@ local function Dk(e,r,y,...)
     local w=string.lower (tostring(e or "" ))
     local j=string.lower (tostring(y or "" ))
     if j~= "" and j~= "egg" then
+        if string.find (j, "prism" )or string.find (j, "enchanted" )or string.find (j, "pixie" )or string.find (j, "fairy" )or string.find (j, "treant" )or string.find (j, "dryad" )or string.find (j, "crystal" )then
+            return "Enchanted Forest"
+        end
         if string.find (j, "spideron" )or string.find (j, "crustacia" )or string.find (j, "bladehide" )or string.find (j, "mantaris" )or string.find (j, "rhinotaur" )or string.find (j, "mutantshark" )or string.find (j, "mutant shark" )or string.find (j, "gorillaking" )or string.find (j, "gorilla king" )or string.find (j, "nightflame" )then
             return "Titan Temple"
         end
@@ -2982,7 +2984,9 @@ local function Dk(e,r,y,...)
             return "Forest"
         end
     end
-    if(string.find (w, "light" )and string.find (w, "dark" ))or w== "lightdark" then
+    if string.find (w, "enchanted" )or(string.find (w, "magic" )and string.find (w, "forest" ))then
+        return "Enchanted Forest"
+    elseif(string.find (w, "light" )and string.find (w, "dark" ))or w== "lightdark" then
         return "Light Dark"
     elseif string.find (w, "titan" )then
         return "Titan Temple"
@@ -3008,7 +3012,9 @@ local function Dk(e,r,y,...)
         return "Forest"
     end
     if u> 0 then
-        if u>= 5200 then
+        if u>= 5800 then
+            return "Enchanted Forest"
+        elseif u>= 5200 then
             return "Light Dark"
         elseif u>= 4750 then
             return "Titan Temple"
@@ -3314,15 +3320,24 @@ U4=function(e,u,w,j,...)
     if not a or not V then
         return false
     end
-    h.securingEgg = true h.isReturning = false h.stateTime =os.clock ()h.holdingEggForGuard = true
-    local s=u.Position V4(s, 14 )h.currentTargetModel =w h.targetPosition =s a.AssemblyLinearVelocity =Vector3.zero a.AssemblyAngularVelocity =Vector3.zero Z4(k)pcall(function(...) o:RequestStreamAroundAsync(s)
-    end
-    )
+    h.securingEgg = true
+    h.isReturning = false
+    h.stateTime = os.clock()
+    h.holdingEggForGuard = true
+    local s = u.Position
+    h.currentTargetModel = w
+    h.targetPosition = s
+    a.AssemblyLinearVelocity = Vector3.zero
+    a.AssemblyAngularVelocity = Vector3.zero
+    Z4(k)
+    pcall(function(...) o:RequestStreamAroundAsync(s) end)
+
     if not w and r:FindFirstChild( "AreaEggSlotsClient" )then
-        for e,r in ipairs(r.AreaEggSlotsClient :GetChildren())do
+        for e,r in ipairs(r.AreaEggSlotsClient:GetChildren())do
             local y=r:FindFirstChildWhichIsA( "BasePart" )or r.PrimaryPart
             if y and((y.Position -s)).Magnitude <= 16 then
-                w=r h.currentTargetModel =r
+                w=r
+                h.currentTargetModel = r
                 break
             end
         end
@@ -3330,35 +3345,46 @@ U4=function(e,u,w,j,...)
     if w then
         pcall(function(...)
             for r,y in ipairs(w:GetDescendants())do
-                if y:IsA( "BasePart" )and(y.Transparency > 0.8 and(y.Name ~= "Hitbox" and(y.Name ~= "Root" and not y.Name :find( "Pad" ))))then
+                if y:IsA( "BasePart" )and(y.Transparency > 0.8 and(y.Name ~= "Hitbox" and(y.Name ~= "Root" and not y.Name:find( "Pad" ))))then
                     y.Transparency = 0
                 end
             end
-        end
-        )
+        end)
     end
-    h.statusText = "[AutoSteal] Picking up target egg..." H(string.format ( "[AutoSteal] Lifting target egg (%s)..." ,tostring(e)))
-    local p=os.clock ()+ 3.0
-    local B= 0
+    h.statusText = "[AutoSteal] Picking up target egg..."
+    H(string.format("[AutoSteal] Lifting target egg (%s)...", tostring(e)))
+    
+    -- Safe position: 3.2 studs above egg (never submerged inside floor or egg mesh)
+    local safeCF = u * CFrame.new(0, 3.2, 0)
+    a.CFrame = safeCF
+    a.AssemblyLinearVelocity = Vector3.zero
+    a.AssemblyAngularVelocity = Vector3.zero
+    
+    local timeout = os.clock() + 2.5
     local lastInvoke = 0
-    while not w4(e) and not e4() and(os.clock ()<p and(h.alive and h.securingEgg ))do
-        if j and O4~=j then
-            t( "[AutoSteal] Cancelled by session switch during pickup" )
+    local lastPrompt = 0
+    
+    while not w4(e) and not e4() and (os.clock() < timeout and (h.alive and h.securingEgg)) do
+        if j and O4 ~= j then
+            t("[AutoSteal] Cancelled by session switch during pickup")
             break
         end
-        if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then
+        if not h.pureTweenFarm and (not h.autoFarmLoop and not h.teleporting) then
             break
         end
-        if e and(os.clock ()-B> 0.4 )then
-            B=os.clock ()
-            local r,y=k4(e)
-            if not r and y== "CarriedByOther" then
-                t(string.format ( "[AutoSteal] Target egg %s was snatched by another player! Aborting pickup..." ,tostring(e)))
-                break
-            end
+        
+        -- Smoothly keep safe altitude without spamming PivotTo 60 fps
+        if (a.Position - safeCF.Position).Magnitude > 4 then
+            a.CFrame = safeCF
         end
-        k:PivotTo(u * CFrame.new(0, 0.4, 0))
-        d4(w, s)
+        a.AssemblyLinearVelocity = Vector3.zero
+        
+        -- Fire prompt at smooth 0.15s interval (NO FPS drop / NO stutter)
+        if os.clock() - lastPrompt >= 0.15 then
+            lastPrompt = os.clock()
+            d4(w, s)
+        end
+        
         if e and (os.clock() - lastInvoke >= 0.15) then
             lastInvoke = os.clock()
             if EggCmds and type(EggCmds.RequestCarryAreaEgg) == "function" then
@@ -3376,20 +3402,25 @@ U4=function(e,u,w,j,...)
                 end)
             end
         end
-        y.Heartbeat :Wait()
+        task.wait(0.05)
     end
-    h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
-    if j and O4~=j then
+    h.currentTargetModel = nil
+    h.targetPosition = nil
+    h.securingEgg = false
+    h.holdingEggForGuard = false
+    if j and O4 ~= j then
         return false
     end
-    local R=e4() or w4(e) or j4(e)
+    local R = e4() or w4(e) or j4(e)
     if R then
-        H( "[AutoSteal] Egg successfully secured! Gliding smoothly to Safe Line X=525..." )h.statusText = "Egg Secured! Carrying along Z=-360 to Safe Line..."
+        H("[AutoSteal] Egg successfully secured!")
+        h.statusText = "Egg Secured!"
         return true
     else
-        t( "[-] Failed to pick up egg (stolen or despawned)" )h.statusText = "[-] Failed to pick up egg"
+        t("[-] Failed to pick up egg (stolen or despawned)")
+        h.statusText = "[-] Failed to pick up egg"
         if e then
-            X4[e]=os.clock ()+ 2
+            X4[e] = os.clock() + 2
         end
         return false
     end
@@ -3405,7 +3436,7 @@ l4=function(e,u,...)
     local char = o.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then
+    if not hrp or not hum or hum.Health <= 0 then
         D4()
         return false
     end
@@ -3423,7 +3454,7 @@ l4=function(e,u,...)
         return false
     end
 
-    local targetCF = e.CFrame or S
+    local targetCF = e.CFrame or e.BoundsCFrame or S
     local targetUid = e.Uid
     local targetPos = targetCF.Position
 
@@ -3444,27 +3475,38 @@ l4=function(e,u,...)
     
     -- Pre-stream target area
     pcall(function() o:RequestStreamAroundAsync(targetPos) end)
-    V4(targetPos, 10)
     
-    -- Direct instant warp to target egg with velocity zeroing
+    -- Safe float height (3.2 studs above egg) so character is never submerged in ground/egg
+    local safeArrivalCF = targetCF * CFrame.new(0, 3.2, 0)
+    
+    -- Teleport smoothly with zero velocity
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
-    char:PivotTo(targetCF * CFrame.new(0, 0.4, 0))
-    hrp.CFrame = targetCF * CFrame.new(0, 0.4, 0)
+    char:PivotTo(safeArrivalCF)
+    hrp.CFrame = safeArrivalCF
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
     task.wait(0.04)
 
-    -- Pick up egg
+    -- Pick up egg cleanly
     local secured = U4(targetUid, targetCF, e.Model, u)
-    if not secured and w4(targetUid) then
+    if not secured and (w4(targetUid) or e4()) then
         secured = true
     end
 
     if secured then
-        h.statusText = "[Warp] Target Secured! Returning home..."
+        h.statusText = "[Warp] Target Secured! Warping back to Base..."
         if h.autoGlide then
-            Q4(h.glideSpeed, u)
+            -- Instant warp return straight to base plot or safe zone (no slow tween through mountains, 0s delay, 0 death!)
+            local homePos = s4() or Vector3.new(525, 75, -360)
+            local safeHomeCF = CFrame.new(homePos + Vector3.new(0, 3.2, 0))
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            char:PivotTo(safeHomeCF)
+            hrp.CFrame = safeHomeCF
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            task.wait(0.05)
             pcall(u4)
         end
         pcall(u4)
@@ -3475,6 +3517,7 @@ l4=function(e,u,...)
         h.securingEgg = false
         h.currentTargetModel = nil
         h.targetPosition = nil
+        b4(h.godmode)
         return true
     else
         t("[-] Warp pickup failed. Retrying next target...")
@@ -3648,16 +3691,16 @@ local qk=os.clock ()task.spawn (function(...)
                                 return
                             end
                             if w then
-                                if h.autoGlide then
-                                    h.statusText = "[SnipeLoop] Target secured! Tweening to Safe Line X=525..." Q4(h.glideSpeed ,r)pcall(u4)
-                                    local y=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next snipe..." ,y)H(string.format ( "[SnipeLoop] Egg stashed in bag (%d total eggs). Delivered! Next snipe..." ,y))
-                                else
-                                    h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)" H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
-                                end
-                                pcall(u4)h.isReturning = false h.delivering = false
+                                pcall(u4)
+                                local y=y4()
+                                h.statusText = string.format("Stashed in Bag (%d Eggs). Next snipe...", y)
+                                H(string.format("[SnipeLoop] Egg stashed in bag (%d total eggs). Delivered! Next snipe...", y))
+                                h.isReturning = false
+                                h.delivering = false
                                 if c4( "WARP" )then
                                     return
                                 end
+                                task.wait(0.1)
                             else
                                 if O4==r and(h.autoFarmLoop and Y4== "WARP" )then
                                     t( "[SnipeLoop] Snipe cycle failed. Resetting for next target..." )
@@ -3906,7 +3949,7 @@ y.Heartbeat :Connect(function(...)
     if h.pureTweenFarm or h.autoFarmLoop or h.teleporting or h.glidingToTarget or h.delivering or h.securingEgg or h.isReturning then
         return
     end
-    if h.alive and(h.autoGlide and(w and(not a4()and u.X >E)))then
+    if h.alive and (h.autoGlide and (w and (not a4() and u.X > E and not h.isReturning and not h.teleporting and not h.securingEgg))) then
         task.spawn (function(...) Q4(h.glideSpeed )u4()h.isReturning = false h.delivering = false
         end
         )
@@ -4302,6 +4345,7 @@ local function disableSingleTrap(obj)
             return
         end
         local isTrap = nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill"))
+            or nm:find("guard") or nm:find("hazard") or nm:find("kill") or nm:find("laser") or nm:find("lava") or nm:find("death") or nm:find("spike")
         if isTrap and obj:IsA("BasePart") then
             obj.CanTouch = false
             obj.CanCollide = false
@@ -4313,11 +4357,8 @@ local function disableSingleTrap(obj)
         elseif obj:IsA("Model") and isTrap then
             for _, desc in ipairs(obj:GetDescendants()) do
                 if desc:IsA("BasePart") then
-                    local subNm = desc.Name:lower()
-                    if subNm:find("hitbox") or subNm:find("trap") or subNm:find("mine") or subNm:find("spike") or subNm:find("hazard") then
-                        desc.CanTouch = false
-                        desc.CanCollide = false
-                    end
+                    desc.CanTouch = false
+                    desc.CanCollide = false
                     for _, child in ipairs(desc:GetChildren()) do
                         if child:IsA("TouchTransmitter") then
                             child:Destroy()
@@ -4336,11 +4377,11 @@ local function scanAndNeutralizeTraps()
     pcall(function()
         for _, child in ipairs(workspace:GetChildren()) do
             local nm = child.Name:lower()
-            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or (nm:find("trap") and not nm:find("treadmill")) then
+            if nm:find("beartrap") or nm:find("spiketrap") or nm:find("landmine") or nm:find("guard") or nm:find("hazard") or nm:find("laser") or nm:find("kill") or (nm:find("trap") and not nm:find("treadmill") and not nm:find("egg")) then
                 disableSingleTrap(child)
             end
         end
-        for _, folderName in ipairs({"Traps", "PlayerTraps", "MapTraps"}) do
+        for _, folderName in ipairs({"Traps", "PlayerTraps", "MapTraps", "Guards", "GuardAreas", "Hazards", "KillParts", "Lasers"}) do
             local f = workspace:FindFirstChild(folderName)
             if f then
                 for _, child in ipairs(f:GetChildren()) do
@@ -5184,10 +5225,6 @@ StealTab:Button({
 				local ok = l4(egg, nil)
 				if ok then
 					pcall(u4)
-					if h.autoGlide then
-						Q4(h.glideSpeed)
-						u4()
-					end
 				end
 			end
 		end)
