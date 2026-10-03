@@ -2024,17 +2024,21 @@ Q4=function(e,r,...)
     if j then
         j.AutoRotate = false
     end
-    local a = Vector3.new(512, 71.2, -360)
+    local safeLineX = 512
+    local laneZ = h.laneZ or L or -360
+    local roadY = 71.0
+    local targetDest = Vector3.new(safeLineX, roadY, laneZ)
     e = math.max(100, e or h.glideSpeed or 650)
     h.isReturning = true
     h.stateTime = os.clock()
     w.AssemblyLinearVelocity = Vector3.zero
     w.AssemblyAngularVelocity = Vector3.zero
     local H = e
-    local s = os.clock() + 15
-    local cruiseY = math.max(w.Position.Y, a.Y, 110)
-    
-    while h.alive and (h.isReturning and os.clock() < s) do
+    local maxSpeedAtLine = 350
+    local slowDownDistX = 620
+    local timeout = os.clock() + 25
+
+    while h.alive and (h.isReturning and os.clock() < timeout) do
         if r and O4 ~= r then
             t("[Return] Aborted by session switch!")
             if j then j.AutoRotate = true end
@@ -2048,34 +2052,56 @@ Q4=function(e,r,...)
             return false
         end
         local currentPos = w.Position
-        local dist2D = (Vector2.new(a.X, a.Z) - Vector2.new(currentPos.X, currentPos.Z)).Magnitude
-        if dist2D <= 8 then
+        if currentPos.X <= (safeLineX + 2) then
             break
         end
         local dt = y.Heartbeat:Wait()
         currentPos = w.Position
-        local step = H * dt
-        
-        -- Fly at safe cruise altitude until near base, then smoothly descend
-        local targetY = (dist2D <= 35) and a.Y or cruiseY
-        local dirX = math.sign(a.X - currentPos.X)
-        local nextX = currentPos.X + dirX * math.min(math.abs(a.X - currentPos.X), step)
+
+        -- Slow down smoothly when approaching Safe Line (X=620 to X=525) so server accepts delivery!
+        local curSpeed = H
+        if currentPos.X <= slowDownDistX and currentPos.X > 525 then
+            local ratio = math.clamp((currentPos.X - 525) / (slowDownDistX - 525), 0, 1)
+            curSpeed = maxSpeedAtLine + (H - maxSpeedAtLine) * ratio
+        elseif currentPos.X <= 525 then
+            curSpeed = maxSpeedAtLine
+        end
+        local step = curSpeed * dt
+
+        -- Move smoothly along the highway X towards base
+        local nextX = currentPos.X - math.min(currentPos.X - targetDest.X, step)
+
+        -- Align with highway corridor Z = -360
+        local dirZ = math.sign(laneZ - currentPos.Z)
+        local nextZ = currentPos.Z + dirZ * math.min(math.abs(laneZ - currentPos.Z), step)
+
+        -- Stay strictly at road height (70.8 - 72.0) so server never flags off-path!
+        local targetY = math.clamp(roadY, 70.8, 72.0)
         local dirY = math.sign(targetY - currentPos.Y)
-        local nextY = currentPos.Y + dirY * math.min(math.abs(targetY - currentPos.Y), step * 0.8)
-        local dirZ = math.sign(a.Z - currentPos.Z)
-        local nextZ = currentPos.Z + dirZ * math.min(math.abs(a.Z - currentPos.Z), step)
-        
+        local nextY = currentPos.Y + dirY * math.min(math.abs(targetY - currentPos.Y), step * 0.6)
+
         local nextPos = Vector3.new(nextX, nextY, nextZ)
         local look = ((nextPos - currentPos)).Magnitude > 0.05 and ((nextPos - currentPos)).Unit or w.CFrame.LookVector
         w.CFrame = CFrame.lookAt(nextPos, nextPos + look)
         w.AssemblyLinearVelocity = Vector3.zero
         w.AssemblyAngularVelocity = Vector3.zero
-        h.statusText = string.format("Returning Home (%.0f studs left)...", dist2D)
+        h.statusText = string.format("Gliding to Base (X: %.0f | Spd: %.0f)...", currentPos.X, curSpeed)
     end
-    
-    w.CFrame = CFrame.new(a + Vector3.new(0, 3.2, 0))
+
+    -- Cross Safe Line into base
+    w.CFrame = CFrame.new(targetDest + Vector3.new(0, 1.0, 0))
     w.AssemblyLinearVelocity = Vector3.zero
     w.AssemblyAngularVelocity = Vector3.zero
+
+    -- Wait 0.4s for server to convert carried egg into Backpack item
+    local startWait = os.clock()
+    while os.clock() - startWait < 0.6 do
+        if y4() > 0 or not w4() or e4() then
+            break
+        end
+        task.wait(0.05)
+    end
+
     if j then
         j.AutoRotate = true
     end
@@ -2085,7 +2111,7 @@ Q4=function(e,r,...)
     if h then
         h.onTreadmill = false
     end
-    h.statusText = "Arrived at Base! Hands Free."
+    h.statusText = "Egg Delivered Successfully! Hands Free."
     return true
 end
 local function jk(e,...)
@@ -3494,42 +3520,10 @@ l4=function(e,u,...)
     end
 
     if secured then
-        h.statusText = "[Warp] Securing Egg: Crossing Safe Line X=525..."
+        h.statusText = "[Warp] Egg Secured! Gliding back along Highway to Base..."
         if h.autoGlide then
-            -- 1. Warp to outside Safe Line entrance
-            local safeOutsideCF = CFrame.new(528, 71.2, -360)
-            char:PivotTo(safeOutsideCF)
-            hrp.CFrame = safeOutsideCF
-            hrp.AssemblyLinearVelocity = Vector3.zero
-            hrp.AssemblyAngularVelocity = Vector3.zero
-            task.wait(0.04)
-            
-            -- 2. Step through Safe Line into base (crossing X=525 plane so server triggers egg deposit!)
-            local safeInsideCF = CFrame.new(512, 71.2, -360)
-            char:PivotTo(safeInsideCF)
-            hrp.CFrame = safeInsideCF
-            hrp.AssemblyLinearVelocity = Vector3.zero
-            hrp.AssemblyAngularVelocity = Vector3.zero
-            
-            -- 3. Wait up to 0.6s for server to convert carried egg into Backpack item
-            local startWait = os.clock()
-            while os.clock() - startWait < 0.6 do
-                if y4() > 0 or not w4() or e4() then
-                    break
-                end
-                task.wait(0.05)
-            end
+            Q4(h.glideSpeed, u)
             pcall(u4)
-            
-            -- 4. Move to personal base plot
-            local homePos = s4()
-            if homePos and (hrp.Position - homePos).Magnitude > 8 then
-                local plotCF = CFrame.new(homePos + Vector3.new(0, 3.2, 0))
-                char:PivotTo(plotCF)
-                hrp.CFrame = plotCF
-                hrp.AssemblyLinearVelocity = Vector3.zero
-                task.wait(0.04)
-            end
         end
         pcall(u4)
         h.teleporting = false
@@ -3749,9 +3743,9 @@ local qk=os.clock ()task.spawn (function(...)
                             end
                             -- Wait at least 8 seconds of continuous idle before mounting treadmill!
                             -- And NEVER mount if player is holding/delivering an egg!
-                            if (os.clock() - h.lastNoEggTime >= 8.0) and h.autoTreadmill and (not h.isBatchPlacing and not h.isHatching and not w4() and not e4()) then
+                            if (os.clock() - h.lastNoEggTime >= 15.0) and h.autoTreadmill and (not h.isBatchPlacing and not h.isHatching and not w4() and not e4()) then
                                 if not h.onTreadmill and not L4() then
-                                    h.statusText = "[AutoTreadmill] Idle for 8s. Mounting treadmill..."
+                                    h.statusText = "[AutoTreadmill] Idle for 15s. Mounting treadmill..."
                                     f4(r)
                                 else
                                     h.statusText = "[AutoTreadmill] Running on treadmill (Waiting for eggs...)"
