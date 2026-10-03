@@ -2024,8 +2024,7 @@ Q4=function(e,r,...)
     if j then
         j.AutoRotate = false
     end
-    local homePos = s4() or Vector3.new(E, 75, -360)
-    local a = Vector3.new(homePos.X, math.max(homePos.Y, 72), homePos.Z)
+    local a = Vector3.new(512, 71.2, -360)
     e = math.max(100, e or h.glideSpeed or 650)
     h.isReturning = true
     h.stateTime = os.clock()
@@ -3495,19 +3494,42 @@ l4=function(e,u,...)
     end
 
     if secured then
-        h.statusText = "[Warp] Target Secured! Warping back to Base..."
+        h.statusText = "[Warp] Securing Egg: Crossing Safe Line X=525..."
         if h.autoGlide then
-            -- Instant warp return straight to base plot or safe zone (no slow tween through mountains, 0s delay, 0 death!)
-            local homePos = s4() or Vector3.new(525, 75, -360)
-            local safeHomeCF = CFrame.new(homePos + Vector3.new(0, 3.2, 0))
+            -- 1. Warp to outside Safe Line entrance
+            local safeOutsideCF = CFrame.new(528, 71.2, -360)
+            char:PivotTo(safeOutsideCF)
+            hrp.CFrame = safeOutsideCF
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
-            char:PivotTo(safeHomeCF)
-            hrp.CFrame = safeHomeCF
+            task.wait(0.04)
+            
+            -- 2. Step through Safe Line into base (crossing X=525 plane so server triggers egg deposit!)
+            local safeInsideCF = CFrame.new(512, 71.2, -360)
+            char:PivotTo(safeInsideCF)
+            hrp.CFrame = safeInsideCF
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
-            task.wait(0.05)
+            
+            -- 3. Wait up to 0.6s for server to convert carried egg into Backpack item
+            local startWait = os.clock()
+            while os.clock() - startWait < 0.6 do
+                if y4() > 0 or not w4() or e4() then
+                    break
+                end
+                task.wait(0.05)
+            end
             pcall(u4)
+            
+            -- 4. Move to personal base plot
+            local homePos = s4()
+            if homePos and (hrp.Position - homePos).Magnitude > 8 then
+                local plotCF = CFrame.new(homePos + Vector3.new(0, 3.2, 0))
+                char:PivotTo(plotCF)
+                hrp.CFrame = plotCF
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                task.wait(0.04)
+            end
         end
         pcall(u4)
         h.teleporting = false
@@ -3587,6 +3609,7 @@ local Ck=os.clock ()task.spawn (function(...)
                         local u=O4
                         local w=N4()
                         if w and(h.pureTweenFarm and(Y4== "TWEEN" and O4==u))then
+                            h.lastNoEggTweenTime = nil
                             if h.onTreadmill or L4()then
                                 h.statusText = "[AutoSteal] Target found! Getting off treadmill..." M4(true)
                             end
@@ -3643,17 +3666,22 @@ local Ck=os.clock ()task.spawn (function(...)
                                 h.currentTargetModel =nil h.targetPosition =nil h.glidingToTarget = false
                             end
                         else
-                            if os.clock ()-Ck> 5 then
-                                X4={}Ck=os.clock ()
+                            if os.clock() - Ck > 5 then
+                                X4 = {}
+                                Ck = os.clock()
                             end
-                            if h.autoTreadmill and(not h.isBatchPlacing and not h.isHatching )then
-                                if not h.onTreadmill and not L4()then
-                                    h.statusText = "[AutoTreadmill] No targets. Mounting treadmill..." f4(u)
+                            if not h.lastNoEggTweenTime then
+                                h.lastNoEggTweenTime = os.clock()
+                            end
+                            if (os.clock() - h.lastNoEggTweenTime >= 8.0) and h.autoTreadmill and (not h.isBatchPlacing and not h.isHatching and not w4() and not e4()) then
+                                if not h.onTreadmill and not L4() then
+                                    h.statusText = "[AutoTreadmill] Idle for 8s. Mounting treadmill..."
+                                    f4(u)
                                 else
                                     h.statusText = "[AutoTreadmill] Running on treadmill (Waiting for eggs...)"
                                 end
                             else
-                                h.statusText = "[AutoSteal] Scanning for targets..."
+                                h.statusText = "[AutoSteal] Waiting for eggs..."
                             end
                         end
                     end
@@ -3682,6 +3710,7 @@ local qk=os.clock ()task.spawn (function(...)
                         local r=O4
                         local y=N4()
                         if y and(h.autoFarmLoop and(Y4== "WARP" and O4==r))then
+                            h.lastNoEggTime = nil
                             if h.onTreadmill or L4()then
                                 h.statusText = "[SnipeLoop] Target found! Getting off treadmill..." M4(true)
                             end
@@ -3711,17 +3740,24 @@ local qk=os.clock ()task.spawn (function(...)
                                 end
                             end
                         else
-                            if os.clock ()-qk> 5 then
-                                X4={}qk=os.clock ()
+                            if os.clock() - qk > 5 then
+                                X4 = {}
+                                qk = os.clock()
                             end
-                            if h.autoTreadmill and(not h.isBatchPlacing and not h.isHatching )then
-                                if not h.onTreadmill and not L4()then
-                                    h.statusText = "[AutoTreadmill] No targets. Mounting treadmill..." f4(r)
+                            if not h.lastNoEggTime then
+                                h.lastNoEggTime = os.clock()
+                            end
+                            -- Wait at least 8 seconds of continuous idle before mounting treadmill!
+                            -- And NEVER mount if player is holding/delivering an egg!
+                            if (os.clock() - h.lastNoEggTime >= 8.0) and h.autoTreadmill and (not h.isBatchPlacing and not h.isHatching and not w4() and not e4()) then
+                                if not h.onTreadmill and not L4() then
+                                    h.statusText = "[AutoTreadmill] Idle for 8s. Mounting treadmill..."
+                                    f4(r)
                                 else
                                     h.statusText = "[AutoTreadmill] Running on treadmill (Waiting for eggs...)"
                                 end
                             else
-                                h.statusText = "[SnipeLoop] Searching for targets..."
+                                h.statusText = "[SnipeLoop] Waiting for eggs..."
                             end
                         end
                     end
